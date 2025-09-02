@@ -827,70 +827,52 @@ async def get_unjoined_force_sub_buttons(bot, message):
     from info import FORCE_SUB_CHANNELS, AUTH_CHANNEL
     from pyrogram.types import InlineKeyboardButton
     from pyrogram import enums
-    from pyrogram.errors import ChatAdminRequired, UserNotParticipant
+    from pyrogram.errors import UserNotParticipant, ChatAdminRequired
 
     btn = []
     user_id = message.from_user.id
+
+    async def add_join_button(chat_id, fallback_name="Channel"):
+        try:
+            chat = await bot.get_chat(int(chat_id))
+            invite_link = chat.invite_link or (f"https://t.me/{chat.username}" if chat.username else "https://t.me/JNK_BACKUP")
+            btn.append([InlineKeyboardButton(f"🔐 Join {chat.title}", url=invite_link)])
+        except Exception as e:
+            print(f"Error getting info for chat {chat_id}: {e}")
+            btn.append([InlineKeyboardButton(f"🔐 Join {fallback_name}", url="https://t.me/JNK_BACKUP")])
 
     # Check AUTH_CHANNEL first
     if AUTH_CHANNEL:
         try:
             result = await bot.get_chat_member(int(AUTH_CHANNEL), user_id)
-            # If user is banned, left, or kicked, show join button
-            if result.status in [enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.KICKED]:
-                chat = await bot.get_chat(int(AUTH_CHANNEL))
-                invite_link = chat.invite_link or f"https://t.me/{chat.username}" if chat.username else "https://t.me/JNK_BACKUP"
-                btn.append([InlineKeyboardButton(f"❌ Join {chat.title} ❌", url=invite_link)])
+            if result.status in [enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.KICKED]:
+                await add_join_button(AUTH_CHANNEL, "Main Channel")
         except UserNotParticipant:
-            # User is not a participant, show join button
-            try:
-                chat = await bot.get_chat(int(AUTH_CHANNEL))
-                invite_link = chat.invite_link or f"https://t.me/{chat.username}" if chat.username else "https://t.me/JNK_BACKUP"
-                btn.append([InlineKeyboardButton(f"🔐 Join {chat.title}", url=invite_link)])
-            except Exception as e:
-                print(f"Error getting AUTH_CHANNEL info: {e}")
-                btn.append([InlineKeyboardButton(f"🔐 Join Main Channel", url="https://t.me/JNK_BACKUP")])
-        except (ChatAdminRequired, Exception) as e:
-            # Bot doesn't have enough permissions or other error
-            print(f"Error checking AUTH_CHANNEL subscription: {e}")
-            try:
-                chat = await bot.get_chat(int(AUTH_CHANNEL))
-                invite_link = chat.invite_link or f"https://t.me/{chat.username}" if chat.username else "https://t.me/JNK_BACKUP"
-                btn.append([InlineKeyboardButton(f"🔐 Join {chat.title}", url=invite_link)])
-            except:
-                btn.append([InlineKeyboardButton(f"🔐 Join Main Channel", url="https://t.me/JNK_BACKUP")])
+            await add_join_button(AUTH_CHANNEL, "Main Channel")
+        except ChatAdminRequired:
+            await add_join_button(AUTH_CHANNEL, "Main Channel")
+        except Exception as e:
+            print(f"Error checking AUTH_CHANNEL {AUTH_CHANNEL}: {e}")
+            await add_join_button(AUTH_CHANNEL, "Main Channel")
 
     # Check FORCE_SUB_CHANNELS
     if FORCE_SUB_CHANNELS:
         for channel in FORCE_SUB_CHANNELS:
             try:
                 result = await bot.get_chat_member(int(channel), user_id)
-                # If user is banned, left, or kicked, show join button
-                if result.status in [enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.KICKED]:
-                    chat = await bot.get_chat(int(channel))
-                    invite_link = chat.invite_link or f"https://t.me/{chat.username}" if chat.username else "https://t.me/JNK_BACKUP"
-                    btn.append([InlineKeyboardButton(f"❌ Join {chat.title} ❌", url=invite_link)])
+                if result.status in [enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.KICKED]:
+                    await add_join_button(channel)
             except UserNotParticipant:
-                # User is not a participant, show join button
-                try:
-                    chat = await bot.get_chat(int(channel))
-                    invite_link = chat.invite_link or f"https://t.me/{chat.username}" if chat.username else "https://t.me/JNK_BACKUP"
-                    btn.append([InlineKeyboardButton(f"🔐 Join {chat.title}", url=invite_link)])
-                except Exception as e:
-                    print(f"Error getting channel {channel} info: {e}")
-                    btn.append([InlineKeyboardButton(f"🔐 Join Channel", url="https://t.me/JNK_BACKUP")])
-            except (ChatAdminRequired, Exception) as e:
-                # Bot doesn't have enough permissions or other error
-                print(f"Error checking subscription for channel {channel}: {e}")
-                try:
-                    chat = await bot.get_chat(int(channel))
-                    invite_link = chat.invite_link or f"https://t.me/{chat.username}" if chat.username else "https://t.me/JNK_BACKUP"
-                    btn.append([InlineKeyboardButton(f"🔐 Join {chat.title}", url=invite_link)])
-                except:
-                    btn.append([InlineKeyboardButton(f"🔐 Join Channel", url="https://t.me/JNK_BACKUP")])
+                await add_join_button(channel)
+            except ChatAdminRequired:
+                await add_join_button(channel)
+            except Exception as e:
+                print(f"Error checking FORCE_SUB channel {channel}: {e}")
+                await add_join_button(channel)
 
+    # Add retry button if any join button was added
     if btn:
-        btn.append([InlineKeyboardButton("🔄 Try Again 🔄", callback_data=f"unmuteme#{message.from_user.id}")])
+        btn.append([InlineKeyboardButton("🔄 Try Again 🔄", callback_data=f"unmuteme#{user_id}")])
         return btn
-    else:
-        return None
+    return None
+
