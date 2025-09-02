@@ -853,17 +853,15 @@ async def get_unjoined_force_sub_buttons(bot, message):
         except UserNotParticipant:
             await add_join_button(chat_id, fallback)
         except ChatAdminRequired:
-            # Bot not admin: fallback to showing join button
+            # Bot not admin → force show join button
             await add_join_button(chat_id, fallback)
         except Exception as e:
             print(f"Error checking membership in {chat_id}: {e}")
             await add_join_button(chat_id, fallback)
 
-    # Check AUTH_CHANNEL
     if AUTH_CHANNEL:
         await check_and_add(AUTH_CHANNEL, "Main Channel")
 
-    # Check FORCE_SUB_CHANNELS
     if FORCE_SUB_CHANNELS:
         for channel in FORCE_SUB_CHANNELS:
             await check_and_add(channel)
@@ -872,5 +870,6 @@ async def get_unjoined_force_sub_buttons(bot, message):
         btn.append([InlineKeyboardButton("🔄 Try Again 🔄", callback_data=f"unmuteme#{user_id}")])
         return btn
     return None
+
 
 
