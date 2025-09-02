@@ -10,8 +10,8 @@ from pyrogram.types import *
 from database.ia_filterdb import col, sec_col, get_file_details, unpack_new_file_id, get_bad_files
 from database.users_chats_db import db, delete_all_referal_users, get_referal_users_count, get_referal_all_users, referal_add_user
 from database.join_reqs import JoinReqs
-from info import CLONE_MODE, OWNER_LNK, REACTIONS, CHANNELS, REQUEST_TO_JOIN_MODE, TRY_AGAIN_BTN, ADMINS, SHORTLINK_MODE, PREMIUM_AND_REFERAL_MODE, STREAM_MODE, AUTH_CHANNEL, REFERAL_PREMEIUM_TIME, REFERAL_COUNT, PAYMENT_TEXT, PAYMENT_QR, LOG_CHANNEL, PICS, BATCH_FILE_CAPTION, CUSTOM_FILE_CAPTION, PROTECT_CONTENT, CHNL_LNK, GRP_LNK, REQST_CHANNEL, SUPPORT_CHAT, MAX_B_TN, VERIFY, SHORTLINK_API, SHORTLINK_URL, TUTORIAL, VERIFY_TUTORIAL, IS_TUTORIAL, URL
-from utils import get_settings, pub_is_subscribed, get_size, is_subscribed, save_group_settings, temp, verify_user, check_token, check_verification, get_token, get_shortlink, get_tutorial, get_seconds
+from info import CLONE_MODE, OWNER_LNK, REACTIONS, CHANNELS, REQUEST_TO_JOIN_MODE, TRY_AGAIN_BTN, ADMINS, SHORTLINK_MODE, PREMIUM_AND_REFERAL_MODE, STREAM_MODE, AUTH_CHANNEL, REFERAL_PREMEIUM_TIME, REFERAL_COUNT, PAYMENT_TEXT, PAYMENT_QR, LOG_CHANNEL, PICS, BATCH_FILE_CAPTION, CUSTOM_FILE_CAPTION, PROTECT_CONTENT, CHNL_LNK, GRP_LNK, REQST_CHANNEL, SUPPORT_CHAT, MAX_B_TN, VERIFY, SHORTLINK_API, SHORTLINK_URL, TUTORIAL, VERIFY_TUTORIAL, IS_TUTORIAL, URL, FORCE_SUB_CHANNELS
+from utils import get_settings, pub_is_subscribed, get_size, is_subscribed, save_group_settings, temp, verify_user, check_token, check_verification, get_token, get_shortlink, get_tutorial, get_seconds, is_force_subscribed, get_force_sub_buttons
 from database.connections_mdb import active_connection
 from urllib.parse import quote_plus
 from TechVJ.util.file_properties import get_name, get_hash, get_media_file_size
@@ -93,43 +93,9 @@ async def start(client, message):
         )
         return
     
-    if AUTH_CHANNEL and not await is_subscribed(client, message):
+    if (AUTH_CHANNEL or FORCE_SUB_CHANNELS) and not await is_force_subscribed(client, message):
         try:
-            if REQUEST_TO_JOIN_MODE == True:
-                invite_link = await client.create_chat_invite_link(chat_id=(int(AUTH_CHANNEL)), creates_join_request=True)
-            else:
-                invite_link = await client.create_chat_invite_link(int(AUTH_CHANNEL))
-        except Exception as e:
-            print(e)
-            await message.reply_text("Make sure Bot is admin in Forcesub channel")
-            return
-        try:
-            btn = [[InlineKeyboardButton('ᴊᴏɪɴ ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url=f"https://t.me/JNKFREELOOTS"),
-                    InlineKeyboardButton('ᴊᴏɪɴ ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url=f"https://t.me/JNK_BACKUP")
-                 ],[
-                   InlineKeyboardButton("ᴊᴏɪɴ ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ", url=invite_link.invite_link),
-                    InlineKeyboardButton('ᴊᴏɪɴ ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url=f"https://t.me/+hLQh-FvQcL0xNWZl")
-                 ],[
-                    InlineKeyboardButton('ᴊᴏɪɴ ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url=f"https://t.me/+kG8NP8YLiuk0YTE1"),
-                    InlineKeyboardButton('ᴊᴏɪɴ ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url=f"https://t.me/+y9fMTjC6TLJhMTE1")
-                ],[
-                   InlineKeyboardButton('ᴊᴏɪɴ group', url=f"https://t.me/+dd9gZo9nlg9mNjQ1"),
-                   InlineKeyboardButton('ᴊᴏɪɴ group', url=f"https://t.me/+dau0zdsJPhI2OWNl")
-                 ]]
-            if message.command[1] != "subscribe":
-                if REQUEST_TO_JOIN_MODE == True:
-                    if TRY_AGAIN_BTN == True:
-                        try:
-                            kk, file_id = message.command[1].split("_", 1)
-                            btn.append([InlineKeyboardButton("↻ ᴛʀʏ ᴀɢᴀɪɴ", callback_data=f"checksub#{kk}#{file_id}")])
-                        except (IndexError, ValueError):
-                            btn.append([InlineKeyboardButton("↻ ᴛʀʏ ᴀɢᴀɪɴ", url=f"https://t.me/{temp.U_NAME}?start={message.command[1]}")])
-                else:
-                    try:
-                        kk, file_id = message.command[1].split("_", 1)
-                        btn.append([InlineKeyboardButton("↻ ᴛʀʏ ᴀɢᴀɪɴ", callback_data=f"checksub#{kk}#{file_id}")])
-                    except (IndexError, ValueError):
-                        btn.append([InlineKeyboardButton("↻ ᴛʀʏ ᴀɢᴀɪɴ", url=f"https://t.me/{temp.U_NAME}?start={message.command[1]}")])
+            btn = await get_force_sub_buttons(client, message)
             if REQUEST_TO_JOIN_MODE == True:
                 if TRY_AGAIN_BTN == True:
                     text = "**🕵️ ʏᴏᴜ ᴅᴏ ɴᴏᴛ ᴊᴏɪɴ ᴍʏ ʙᴀᴄᴋᴜᴘ ᴄʜᴀɴɴᴇʟ ғɪʀsᴛ ᴊᴏɪɴ ᴄʜᴀɴɴᴇʟ ᴛʜᴇɴ ᴛʀʏ ᴀɢᴀɪɴ**"
@@ -138,6 +104,7 @@ async def start(client, message):
                     text = "**🕵️ ʏᴏᴜ ᴅᴏ ɴᴏᴛ ᴊᴏɪɴ ᴍʏ ʙᴀᴄᴋᴜᴘ ᴄʜᴀɴɴᴇʟ ғɪʀsᴛ ᴊᴏɪɴ ᴄʜᴀɴɴᴇʟ**"
             else:
                 text = "**🕵️ ʏᴏᴜ ᴅᴏ ɴᴏᴛ ᴊᴏɪɴ ᴍʏ ʙᴀᴄᴋᴜᴘ ᴄʜᴀɴɴᴇʟ ғɪʀsᴛ ᴊᴏɪɴ ᴄʜᴀɴɴᴇʟ ᴛʜᴇɴ ᴛʀʏ ᴀɢᴀɪɴ**"
+
             await client.send_message(
                 chat_id=message.from_user.id,
                 text=text,
@@ -147,7 +114,8 @@ async def start(client, message):
             return
         except Exception as e:
             print(e)
-            return await message.reply_text("something wrong with force subscribe.")
+            await message.reply_text("something wrong with force subscribe.")
+            return
             
     if len(message.command) == 2 and message.command[1] in ["subscribe", "error", "okay", "help"]:
         if PREMIUM_AND_REFERAL_MODE == True:
@@ -1096,7 +1064,7 @@ async def shortlink(bot, message):
         return await message.reply(f"You are anonymous admin. Turn off anonymous admin and try again this command")
     chat_type = message.chat.type
     if chat_type == enums.ChatType.PRIVATE:
-        return await message.reply_text(f"<b>Hey {message.from_user.mention}, This command only works on groups !\n\n<u>Follow These Steps to Connect Shortener:</u>\n\n1. Add Me in Your Group with Full Admin Rights\n\n2. After Adding in Grp, Set your Shortener\n\nSend this command in your group\n\n—> /shortlink ""{your_shortener_website_name} {your_shortener_api}</b>")
+        return await message.reply_text(f"<b>Hey {message.from_user.mention}, This command only works on groups!\n\nFollow These Steps to Connect Shortener:\n\n1. Add Me in Your Group with Full Admin Rights\n\n2. After Adding in Grp, Set your Shortener\n\nSend this command in your group\n\n—> /shortlink \"{your_shortener_website_name} {your_shortener_api}\"</b>")
     elif chat_type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
         grpid = message.chat.id
         title = message.chat.title
@@ -1430,4 +1398,3 @@ async def purge_requests(client, message):
             parse_mode=enums.ParseMode.MARKDOWN,
             disable_web_page_preview=True
         )
-
