@@ -805,3 +805,61 @@ async def get_force_sub_buttons(bot, message):
         return btn
     else:
         return None
+
+async def get_unjoined_force_sub_buttons(bot, message):
+    from info import FORCE_SUB_CHANNELS, AUTH_CHANNEL
+    from pyrogram.types import InlineKeyboardButton
+    from pyrogram import enums
+    
+    btn = []
+    user_id = message.from_user.id
+
+    # Check AUTH_CHANNEL first
+    if AUTH_CHANNEL:
+        try:
+            result = await bot.get_chat_member(int(AUTH_CHANNEL), user_id)
+            if result.status in [enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.KICKED]:
+                chat = await bot.get_chat(int(AUTH_CHANNEL))
+                invite_link = chat.invite_link
+                if invite_link:
+                    btn.append([InlineKeyboardButton(f"❌ {chat.title} ❌", url=invite_link)])
+                else:
+                    btn.append([InlineKeyboardButton(f"❌ {chat.title} ❌", url=f"https://t.me/{chat.username}")])
+        except Exception as e:
+            print(f"Error checking AUTH_CHANNEL subscription: {e}")
+            chat = await bot.get_chat(int(AUTH_CHANNEL))
+            invite_link = chat.invite_link
+            if invite_link:
+                btn.append([InlineKeyboardButton(f"❌ {chat.title} ❌", url=invite_link)])
+            else:
+                btn.append([InlineKeyboardButton(f"❌ {chat.title} ❌", url=f"https://t.me/{chat.username}")])
+
+    # Check FORCE_SUB_CHANNELS
+    if FORCE_SUB_CHANNELS:
+        for channel in FORCE_SUB_CHANNELS:
+            try:
+                result = await bot.get_chat_member(int(channel), user_id)
+                if result.status in [enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.KICKED]:
+                    chat = await bot.get_chat(int(channel))
+                    invite_link = chat.invite_link
+                    if invite_link:
+                        btn.append([InlineKeyboardButton(f"❌ {chat.title} ❌", url=invite_link)])
+                    else:
+                        btn.append([InlineKeyboardButton(f"❌ {chat.title} ❌", url=f"https://t.me/{chat.username}")])
+            except Exception as e:
+                print(f"Error checking subscription for channel {channel}: {e}")
+                try:
+                    chat = await bot.get_chat(int(channel))
+                    invite_link = chat.invite_link
+                    if invite_link:
+                        btn.append([InlineKeyboardButton(f"❌ {chat.title} ❌", url=invite_link)])
+                    else:
+                        btn.append([InlineKeyboardButton(f"❌ {chat.title} ❌", url=f"https://t.me/{chat.username}")])
+                except:
+                    btn.append([InlineKeyboardButton(f"❌ Channel Error ❌", url="https://t.me/JNK_BACKUP")])
+
+    if btn:
+        btn.append([InlineKeyboardButton("🔄 Try Again 🔄", callback_data=f"unmuteme#{message.from_user.id}")])
+        return btn
+    else:
+        return None
