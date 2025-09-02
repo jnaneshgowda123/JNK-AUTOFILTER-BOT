@@ -11,7 +11,7 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQ
 from pyrogram import Client, filters, enums
 from pyrogram.errors import FloodWait, UserIsBlocked, MessageNotModified, PeerIdInvalid
 from pyrogram.errors.exceptions.bad_request_400 import MediaEmpty, PhotoInvalidDimensions, WebpageMediaEmpty
-from utils import get_size, is_subscribed, pub_is_subscribed, get_poster, search_gagala, temp, get_settings, save_group_settings, get_shortlink, get_tutorial, send_all, get_cap, get_force_sub_buttons, is_force_subscribed
+from utils import get_size, is_subscribed, pub_is_subscribed, get_poster, search_gagala, temp, get_settings, save_group_settings, get_shortlink, get_tutorial, send_all, get_cap, get_force_sub_buttons, is_force_subscribed, get_unjoined_force_sub_buttons
 from database.users_chats_db import db
 from database.ia_filterdb import col, sec_col, db as vjdb, sec_db, get_file_details, get_search_results, get_bad_files
 from database.filters_mdb import del_all, find_filter, get_filters
@@ -48,8 +48,10 @@ async def give_filter(client, message):
                         ChatPermissions(
                             can_send_messages=False,
                             can_send_media_messages=False,
-                            can_send_other_messages=False,
-                            can_add_web_page_previews=False
+                            can_send_polls=False,
+                            can_change_info=False,
+                            can_invite_users=False,
+                            can_pin_messages=False
                         )
                     )
                 except Exception as e:
@@ -1417,11 +1419,13 @@ async def cb_handler(client: Client, query: CallbackQuery):
                     pyrogram.types.ChatPermissions(
                         can_send_messages=True,
                         can_send_media_messages=True,
-                        can_send_other_messages=True,
-                        can_add_web_page_previews=True
+                        can_send_polls=True,
+                        can_change_info=True,
+                        can_invite_users=True,
+                        can_pin_messages=True
                     )
                 )
-                await query.answer("✅ Successfully unmuted! You can now send messages.", show_alert=True)
+                await query.answer("✅ Successfully verified! You can now send messages.", show_alert=True)
                 try:
                     await query.message.delete()
                 except:
@@ -1434,7 +1438,15 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 except:
                     pass
         else:
-            await query.answer("❌ Please join all channels first, then try again!", show_alert=True)
+            # Get buttons for only unjoined channels
+            btn = await get_unjoined_force_sub_buttons(client, query.message)
+            if btn:
+                await query.message.edit_reply_markup(
+                    reply_markup=InlineKeyboardMarkup(btn)
+                )
+                await query.answer("❌ You still need to join the highlighted channels!", show_alert=True)
+            else:
+                await query.answer("❌ Please try again after joining all channels!", show_alert=True)
 
     elif query.data.startswith("del"):
         ident, file_id = query.data.split("#")
