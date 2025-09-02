@@ -208,7 +208,7 @@ async def broadcast_messages_group(chat_id, message):
         return await broadcast_messages_group(chat_id, message)
     except Exception as e:
         return False, "Error"
-    
+
 async def search_gagala(text):
     usr_agent = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
@@ -225,12 +225,12 @@ async def search_gagala(text):
 async def get_settings(group_id):
     settings = await db.get_settings(group_id)
     return settings
-    
+
 async def save_group_settings(group_id, key, value):
     current = await get_settings(group_id)
     current.update({key: value})
     await db.update_settings(group_id, current)
-    
+
 def get_size(size):
     units = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB"]
     size = float(size)
@@ -273,7 +273,7 @@ def extract_user(message: Message) -> Union[int, str]:
             len(message.entities) > 1 and
             message.entities[1].type == enums.MessageEntityType.TEXT_MENTION
         ):
-           
+
             required_entity = message.entities[1]
             user_id = required_entity.user.id
             user_first_name = required_entity.user.first_name
@@ -482,7 +482,7 @@ async def get_clone_shortlink(link, url, api):
     shortzy = Shortzy(api_key=api, base_site=url)
     link = await shortzy.convert(link)
     return link
-                           
+
 async def get_shortlink(chat_id, link):
     settings = await get_settings(chat_id) #fetching settings for group
     if 'shortlink' in settings.keys():
@@ -512,11 +512,11 @@ async def get_shortlink(chat_id, link):
         shortzy = Shortzy(api_key=API, base_site=URL)
         link = await shortzy.convert(link)
         return link
-    
+
 async def get_tutorial(chat_id):
     settings = await get_settings(chat_id) #fetching settings for group
     return settings['tutorial']
-        
+
 async def get_verify_shorted_link(link, url, api):
     API = api
     URL = url
@@ -538,7 +538,7 @@ async def get_verify_shorted_link(link, url, api):
         shortzy = Shortzy(api_key=API, base_site=URL)
         link = await shortzy.convert(link)
         return link
-        
+
 async def check_token(bot, userid, token):
     user = await bot.get_users(userid)
     if not await db.is_user_exist(user.id):
@@ -597,7 +597,7 @@ async def check_verification(bot, userid):
             return True
     else:
         return False  
-    
+
 async def send_all(bot, userid, files, ident, chat_id, user_name, query):
     settings = await get_settings(chat_id)
     if 'is_shortlink' in settings.keys():
@@ -649,7 +649,7 @@ async def send_all(bot, userid, files, ident, chat_id, user_name, query):
         await query.answer('Hᴇʏ, Sᴛᴀʀᴛ Bᴏᴛ Fɪʀsᴛ Aɴᴅ Cʟɪᴄᴋ Sᴇɴᴅ Aʟʟ', show_alert=True)
     except Exception as e:
         await query.answer('Hᴇʏ, Sᴛᴀʀᴛ Bᴏᴛ Fɪʀsᴛ Aɴᴅ Cʟɪᴄᴋ Sᴇɴᴅ Aʟʟ', show_alert=True)
-        
+
 async def get_cap(settings, remaining_seconds, files, query, total_results, search):
     if settings["imdb"]:
         IMDB_CAP = temp.IMDB_CAP.get(query.from_user.id)
@@ -741,9 +741,9 @@ async def is_force_subscribed(bot, message):
     from info import FORCE_SUB_CHANNELS, AUTH_CHANNEL
     from pyrogram import enums
     from pyrogram.errors import PeerIdInvalid, UserNotParticipant
-    
+
     user_id = message.from_user.id
-    
+
     # Check AUTH_CHANNEL first
     if AUTH_CHANNEL:
         try:
@@ -753,7 +753,7 @@ async def is_force_subscribed(bot, message):
         except Exception as e:
             print(f"Error checking AUTH_CHANNEL subscription: {e}")
             return False
-    
+
     # Check FORCE_SUB_CHANNELS
     if FORCE_SUB_CHANNELS:
         for channel in FORCE_SUB_CHANNELS:
@@ -764,15 +764,15 @@ async def is_force_subscribed(bot, message):
             except Exception as e:
                 print(f"Error checking subscription for channel {channel}: {e}")
                 return False
-    
+
     return True
 
 async def get_force_sub_buttons(bot, message):
     from info import FORCE_SUB_CHANNELS, AUTH_CHANNEL
     from pyrogram.types import InlineKeyboardButton
-    
+
     btn = []
-    
+
     # Add AUTH_CHANNEL button first
     if AUTH_CHANNEL:
         try:
@@ -785,7 +785,7 @@ async def get_force_sub_buttons(bot, message):
         except Exception as e:
             print(f"Error fetching invite link for AUTH_CHANNEL: {e}")
             btn.append([InlineKeyboardButton(f"• Main Channel •", url="https://t.me/JNK_BACKUP")])
-    
+
     # Add FORCE_SUB_CHANNELS buttons
     if FORCE_SUB_CHANNELS:
         for channel in FORCE_SUB_CHANNELS:
@@ -799,7 +799,7 @@ async def get_force_sub_buttons(bot, message):
             except Exception as e:
                 print(f"Error fetching invite link for channel {channel}: {e}")
                 btn.append([InlineKeyboardButton(f"• Channel Error •", url="https://t.me/JNK_BACKUP")])
-    
+
     if btn:
         btn.append([InlineKeyboardButton("🔄 Try Again 🔄", callback_data=f"unmuteme#{message.from_user.id}")])
         return btn
