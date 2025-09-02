@@ -10,7 +10,7 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQ
 from pyrogram import Client, filters, enums
 from pyrogram.errors import FloodWait, UserIsBlocked, MessageNotModified, PeerIdInvalid
 from pyrogram.errors.exceptions.bad_request_400 import MediaEmpty, PhotoInvalidDimensions, WebpageMediaEmpty
-from utils import get_size, is_subscribed, pub_is_subscribed, get_poster, search_gagala, temp, get_settings, save_group_settings, get_shortlink, get_tutorial, send_all, get_cap
+from utils import get_size, is_subscribed, pub_is_subscribed, get_poster, search_gagala, temp, get_settings, save_group_settings, get_shortlink, get_tutorial, send_all, get_cap, get_force_sub_buttons, is_force_subscribed
 from database.users_chats_db import db
 from database.ia_filterdb import col, sec_col, db as vjdb, sec_db, get_file_details, get_search_results, get_bad_files
 from database.filters_mdb import del_all, find_filter, get_filters
@@ -37,16 +37,11 @@ async def give_filter(client, message):
         settings = await get_settings(message.chat.id)
         chatid = message.chat.id 
         user_id = message.from_user.id if message.from_user else 0
-        if settings['fsub'] != None:
-            try:
-                btn = await pub_is_subscribed(client, message, settings['fsub'])
-                if btn:
-                    btn.append([InlineKeyboardButton("Unmute Me 🔕", callback_data=f"unmuteme#{int(user_id)}")])
-                    await client.restrict_chat_member(chatid, message.from_user.id, ChatPermissions(can_send_messages=False))
-                    await message.reply_photo(photo=random.choice(PICS), caption=f"👋 Hello {message.from_user.mention},\n\nPlease join the channel then click on unmute me button. 😇", reply_markup=InlineKeyboardMarkup(btn), parse_mode=enums.ParseMode.HTML)
-                    return
-            except Exception as e:
-                print(e)
+        if (AUTH_CHANNEL or FORCE_SUB_CHANNELS) and not await is_force_subscribed(client, message):
+            btn = await get_force_sub_buttons(client, message)
+            await client.restrict_chat_member(chatid, message.from_user.id, ChatPermissions(can_send_messages=False))
+            await message.reply_photo(photo=random.choice(PICS), caption=f"👋 Hello {message.from_user.mention},\n\nPlease join the channel then click on unmute me button. 😇", reply_markup=InlineKeyboardMarkup(btn), parse_mode=enums.ParseMode.HTML)
+            return
             
         manual = await manual_filters(client, message)
         if manual == False:
@@ -110,7 +105,7 @@ async def next_page(bot, query):
     temp.SHORT[query.from_user.id] = query.message.chat.id
     settings = await get_settings(query.message.chat.id)
     pre = 'filep' if settings['file_secure'] else 'file'
-    if settings['button']:
+    if settings["button"]:
         btn = [
             [
                 InlineKeyboardButton(
@@ -1046,6 +1041,26 @@ async def filter_qualities_cb_handler(client: Client, query: CallbackQuery):
         except MessageNotModified:
             pass
                 
+@Client.on_callback_query(filters.regex(r"^generate_stream_link"))
+async def generate_stream_link(client: Client, query: CallbackQuery):
+    _, file_id = query.data.split(":")
+    try:
+        log_msg = await client.send_cached_media(chat_id=LOG_CHANNEL, file_id=file_id)
+        fileName = {quote_plus(get_name(log_msg))}
+        stream = f"{URL}watch/{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
+        download = f"{URL}{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
+        button = [[
+            InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀᴅ •", url=download),
+            InlineKeyboardButton('• ᴡᴀᴛᴄʜ •', url=stream)
+        ],[
+            InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪɴ ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
+        ]]
+        await query.message.edit_reply_markup(InlineKeyboardMarkup(button))
+    except Exception as e:
+        print(e)
+        await query.answer(f"something went wrong\n\n{e}", show_alert=True)
+        return
+    
 @Client.on_callback_query()
 async def cb_handler(client: Client, query: CallbackQuery):
     if query.data == "close_data":
@@ -1635,10 +1650,10 @@ async def cb_handler(client: Client, query: CallbackQuery):
     elif query.data.startswith("show_option"):
         ident, from_user = query.data.split("#")
         btn = [[
-                InlineKeyboardButton("Uɴᴀᴠᴀɪʟᴀʙʟᴇ", callback_data=f"unavailable#{from_user}"),
-                InlineKeyboardButton("Uᴘʟᴏᴀᴅᴇᴅ", callback_data=f"uploaded#{from_user}")
+                InlineKeyboardButton("Uɴᴀᴠᴀɪʟᴀʙʟᴇ", callback_data=f"unalert#{from_user}"),
+                InlineKeyboardButton("Uᴘʟᴏᴀᴅᴇᴅ", callback_data=f"upalert#{from_user}")
              ],[
-                InlineKeyboardButton("Aʟʀᴇᴀᴅʏ Aᴠᴀɪʟᴀʙʟᴇ", callback_data=f"already_available#{from_user}")
+                InlineKeyboardButton("Aʟʀᴇᴀᴅʏ Aᴠᴀɪʟᴀʙʟᴇ", callback_data=f"alalert#{from_user}")
               ]]
         btn2 = [[
                  InlineKeyboardButton("Vɪᴇᴡ Sᴛᴀᴛᴜs", url=f"{query.message.link}")
@@ -1695,7 +1710,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             except UserIsBlocked:
                 await client.send_message(chat_id=int(SUPPORT_CHAT_ID), text=f"<b>Hᴇʏ {user.mention}, Yᴏᴜʀ ʀᴇᴏ̨ᴜᴇsᴛ ʜᴀs ʙᴇᴇɴ ᴜᴘʟᴏᴀᴅᴇᴅ ʙʏ ᴏᴜʀ ᴍᴏᴅᴇʀᴀᴛᴏʀs. Kɪɴᴅʟʏ sᴇᴀʀᴄʜ ɪɴ ᴏᴜʀ Gʀᴏᴜᴘ.\n\nNᴏᴛᴇ: Tʜɪs ᴍᴇssᴀɢᴇ ɪs sᴇɴᴛ ᴛᴏ ᴛʜɪs ɢʀᴏᴜᴘ ʙᴇᴄᴀᴜsᴇ ʏᴏᴜ'ᴠᴇ ʙʟᴏᴄᴋᴇᴅ ᴛʜᴇ ʙᴏᴛ. Tᴏ sᴇɴᴅ ᴛʜɪs ᴍᴇssᴀɢᴇ ᴛᴏ ʏᴏᴜʀ PM, Mᴜsᴛ ᴜɴʙʟᴏᴄᴋ ᴛʜᴇ ʙᴏᴛ.</b>", reply_markup=InlineKeyboardMarkup(btn2))
         else:
-            await query.answer("Yᴏᴜ ᴅᴏɴ'ᴛ ʜᴀᴠᴇ sᴜғғɪᴄɪᴀɴᴛ ʀɪɢᴛs ᴛᴏ ᴅᴏ ᴛʜɪs !", show_alert=True)
+            await query.answer("Yᴏᴜ ᴅᴏɴ'ᴛ ʜᴀᴠᴇ sᴜғғɪᴄɪᴀɴᴛ ʀɪɢʜᴛs ᴛᴏ ᴅᴏ ᴛʜɪs !", show_alert=True)
 
     elif query.data.startswith("already_available"):
         ident, from_user = query.data.split("#")
@@ -1720,7 +1735,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             except UserIsBlocked:
                 await client.send_message(chat_id=int(SUPPORT_CHAT_ID), text=f"<b>Hᴇʏ {user.mention}, Yᴏᴜʀ ʀᴇᴏ̨ᴜᴇsᴛ ɪs ᴀʟʀᴇᴀᴅʏ ᴀᴠᴀɪʟᴀʙʟᴇ ᴏɴ ᴏᴜʀ ʙᴏᴛ's ᴅᴀᴛᴀʙᴀsᴇ. Kɪɴᴅʟʏ sᴇᴀʀᴄʜ ɪɴ ᴏᴜʀ Gʀᴏᴜᴘ.\n\nNᴏᴛᴇ: Tʜɪs ᴍᴇssᴀɢᴇ ɪs sᴇɴᴛ ᴛᴏ ᴛʜɪs ɢʀᴏᴜᴘ ʙᴇᴄᴀᴜsᴇ ʏᴏᴜ'ᴠᴇ ʙʟᴏᴄᴋᴇᴅ ᴛʜᴇ ʙᴏᴛ. Tᴏ sᴇɴᴅ ᴛʜɪs ᴍᴇssᴀɢᴇ ᴛᴏ ʏᴏᴜʀ PM, Mᴜsᴛ ᴜɴʙʟᴏᴄᴋ ᴛʜᴇ ʙᴏᴛ.</b>", reply_markup=InlineKeyboardMarkup(btn2))
         else:
-            await query.answer("Yᴏᴜ ᴅᴏɴ'ᴛ ʜᴀᴠᴇ sᴜғғɪᴄɪᴀɴᴛ ʀɪɢᴛs ᴛᴏ ᴅᴏ ᴛʜɪs !", show_alert=True)
+            await query.answer("Yᴏᴜ ᴅᴏɴ'ᴛ ʜᴀᴠᴇ sᴜғғɪᴄɪᴀɴᴛ ʀɪɢʜᴛs ᴛᴏ ᴅᴏ ᴛʜɪs !", show_alert=True)
 
     elif query.data.startswith("alalert"):
         ident, from_user = query.data.split("#")
@@ -1728,7 +1743,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             user = await client.get_users(from_user)
             await query.answer(f"Hᴇʏ {user.first_name}, Yᴏᴜʀ Rᴇᴏ̨ᴜᴇsᴛ ɪs Aʟʀᴇᴀᴅʏ Aᴠᴀɪʟᴀʙʟᴇ !", show_alert=True)
         else:
-            await query.answer("Yᴏᴜ ᴅᴏɴ'ᴛ ʜᴀᴠᴇ sᴜғғɪᴄɪᴀɴᴛ ʀɪɢᴛs ᴛᴏ ᴅᴏ ᴛʜɪs !", show_alert=True)
+            await query.answer("Yᴏᴜ ᴅᴏɴ'ᴛ ʜᴀᴠᴇ sᴜғғɪᴄɪᴀɴᴛ ʀɪɢʜᴛs ᴛᴏ ᴅᴏ ᴛʜɪs !", show_alert=True)
 
     elif query.data.startswith("upalert"):
         ident, from_user = query.data.split("#")
@@ -1736,7 +1751,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             user = await client.get_users(from_user)
             await query.answer(f"Hᴇʏ {user.first_name}, Yᴏᴜʀ Rᴇᴏ̨ᴜᴇsᴛ ɪs Uᴘʟᴏᴀᴅᴇᴅ !", show_alert=True)
         else:
-            await query.answer("Yᴏᴜ ᴅᴏɴ'ᴛ ʜᴀᴠᴇ sᴜғғɪᴄɪᴀɴᴛ ʀɪɢᴛs ᴛᴏ ᴅᴏ ᴛʜɪs !", show_alert=True)
+            await query.answer("Yᴏᴜ ᴅᴏɴ'ᴛ ʜᴀᴠᴇ sᴜғғɪᴄɪᴀɴᴛ ʀɪɢʜᴛs ᴛᴏ ᴅᴏ ᴛʜɪs !", show_alert=True)
         
     elif query.data.startswith("unalert"):
         ident, from_user = query.data.split("#")
@@ -1744,687 +1759,8 @@ async def cb_handler(client: Client, query: CallbackQuery):
             user = await client.get_users(from_user)
             await query.answer(f"Hᴇʏ {user.first_name}, Yᴏᴜʀ Rᴇᴏ̨ᴜᴇsᴛ ɪs Uɴᴀᴠᴀɪʟᴀʙʟᴇ !", show_alert=True)
         else:
-            await query.answer("Yᴏᴜ ᴅᴏɴ'ᴛ ʜᴀᴠᴇ sᴜғғɪᴄɪᴀɴᴛ ʀɪɢᴛs ᴛᴏ ᴅᴏ ᴛʜɪs !", show_alert=True)
+            await query.answer("Yᴏᴜ ᴅᴏɴ'ᴛ ʜᴀᴠᴇ sᴜғғɪᴄɪᴀɴᴛ ʀɪɢʜᴛs ᴛᴏ ᴅᴏ ᴛʜɪs !", show_alert=True)
 
-    elif query.data.startswith("generate_stream_link"):
-        _, file_id = query.data.split(":")
-        try:
-            log_msg = await client.send_cached_media(chat_id=LOG_CHANNEL, file_id=file_id)
-            fileName = {quote_plus(get_name(log_msg))}
-            stream = f"{URL}watch/{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
-            download = f"{URL}{str(log_msg.id)}/{quote_plus(get_name(log_msg))}?hash={get_hash(log_msg)}"
-            button = [[
-                InlineKeyboardButton("• ᴅᴏᴡɴʟᴏᴀᴅ •", url=download),
-                InlineKeyboardButton('• ᴡᴀᴛᴄʜ •', url=stream)
-            ],[
-                InlineKeyboardButton("• ᴡᴀᴛᴄʜ ɪɴ ᴡᴇʙ ᴀᴘᴘ •", web_app=WebAppInfo(url=stream))
-            ]]
-            await query.message.edit_reply_markup(InlineKeyboardMarkup(button))
-        except Exception as e:
-            print(e)
-            await query.answer(f"something went wrong\n\n{e}", show_alert=True)
-            return
-    
-    elif query.data == "reqinfo":
-        await query.answer(text=script.REQINFO, show_alert=True)
-
-    elif query.data == "select":
-        await query.answer(text=script.SELECT, show_alert=True)
-
-    elif query.data == "sinfo":
-        await query.answer(text=script.SINFO, show_alert=True)
-
-    elif query.data == "start":
-        if PREMIUM_AND_REFERAL_MODE == True:
-            buttons = [[
-                InlineKeyboardButton('⤬ ᴀᴅᴅ ᴍᴇ ᴛᴏ ʏᴏᴜʀ ɢʀᴏᴜᴘ ⤬', url=f'http://t.me/{temp.U_NAME}?startgroup=true')
-            ],[
-                InlineKeyboardButton('ᴇᴀʀɴ ᴍᴏɴᴇʏ', callback_data="shortlink_info"),
-                InlineKeyboardButton('ᴍᴏᴠɪᴇ ɢʀᴏᴜᴘ', url=GRP_LNK)
-            ],[
-                InlineKeyboardButton('ʜᴇʟᴘ', callback_data='help'),
-                InlineKeyboardButton('ᴀʙᴏᴜᴛ', callback_data='about')
-            ],[
-                InlineKeyboardButton('ᴘʀᴇᴍɪᴜᴍ ᴀɴᴅ ʀᴇғᴇʀʀᴀʟ', callback_data='subscription')
-            ],[
-                InlineKeyboardButton('ᴊᴏɪɴ ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url=CHNL_LNK)
-            ]]
-        else:
-            buttons = [[
-                InlineKeyboardButton('⤬ ᴀᴅᴅ ᴍᴇ ᴛᴏ ʏᴏᴜʀ ɢʀᴏᴜᴘ ⤬', url=f'http://t.me/{temp.U_NAME}?startgroup=true')
-            ],[
-                InlineKeyboardButton('ᴇᴀʀɴ ᴍᴏɴᴇʏ', callback_data="shortlink_info"),
-                InlineKeyboardButton('ᴍᴏᴠɪᴇ ɢʀᴏᴜᴘ', url=GRP_LNK)
-            ],[
-                InlineKeyboardButton('ʜᴇʟᴘ', callback_data='help'),
-                InlineKeyboardButton('ᴀʙᴏᴜᴛ', callback_data='about')
-            ],[
-                InlineKeyboardButton('ᴊᴏɪɴ ᴜᴘᴅᴀᴛᴇ ᴄʜᴀɴɴᴇʟ', url=CHNL_LNK)
-            ]]
-        if CLONE_MODE == True:
-            buttons.append([InlineKeyboardButton('ᴄʀᴇᴀᴛᴇ ᴏᴡɴ ᴄʟᴏɴᴇ ʙᴏᴛ', callback_data='clone')])
-        reply_markup = InlineKeyboardMarkup(buttons)
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        await query.message.edit_text(
-            text=script.START_TXT.format(query.from_user.mention, temp.U_NAME, temp.B_NAME),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-        await query.answer(MSG_ALRT)
-
-    elif query.data == "clone":
-        buttons = [[
-            InlineKeyboardButton('⟸ Bᴀᴄᴋ', callback_data='start')
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(buttons)
-        await query.message.edit_text(
-            text=script.CLONE_TXT,
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-        
-    elif query.data == "filters":
-        buttons = [[
-            InlineKeyboardButton('Mᴀɴᴜᴀʟ FIʟᴛᴇʀ', callback_data='manuelfilter'),
-            InlineKeyboardButton('Aᴜᴛᴏ FIʟᴛᴇʀ', callback_data='autofilter')
-        ],[
-            InlineKeyboardButton('⟸ Bᴀᴄᴋ', callback_data='help'),
-            InlineKeyboardButton('Gʟᴏʙᴀʟ Fɪʟᴛᴇʀs', callback_data='global_filters')
-        ]]
-        
-        reply_markup = InlineKeyboardMarkup(buttons)
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        await query.message.edit_text(
-            text=script.ALL_FILTERS.format(query.from_user.mention),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-
-    elif query.data == "global_filters":
-        buttons = [[
-            InlineKeyboardButton('⟸ Bᴀᴄᴋ', callback_data='filters')
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(buttons)
-        await query.message.edit_text(
-            text=script.GFILTER_TXT,
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    
-    elif query.data == "help":
-        buttons = [[
-             InlineKeyboardButton('⚙️ ᴀᴅᴍɪɴ ᴏɴʟʏ 🔧', callback_data='admin'),
-         ], [ 
-             InlineKeyboardButton('ʀᴇɴᴀᴍᴇ', callback_data='r_txt'),   
-             InlineKeyboardButton('sᴛʀᴇᴀᴍ/ᴅᴏᴡɴʟᴏᴀᴅ', callback_data='s_txt') 
-         ], [ 
-             InlineKeyboardButton('ꜰɪʟᴇ ꜱᴛᴏʀᴇ', callback_data='store_file'),   
-             InlineKeyboardButton('ᴛᴇʟᴇɢʀᴀᴘʜ', callback_data='tele') 
-         ], [ 
-             InlineKeyboardButton('ᴄᴏɴɴᴇᴄᴛɪᴏɴꜱ', callback_data='coct'), 
-             InlineKeyboardButton('ꜰɪʟᴛᴇʀꜱ', callback_data='filters')
-         ], [
-             InlineKeyboardButton('ʏᴛ-ᴅʟ', callback_data='ytdl'), 
-             InlineKeyboardButton('ꜱʜᴀʀᴇ ᴛᴇxᴛ', callback_data='share')
-         ], [
-             InlineKeyboardButton('ꜱᴏɴɢ', callback_data='song'),
-             InlineKeyboardButton('ᴇᴀʀɴ ᴍᴏɴᴇʏ', callback_data='shortlink_info')
-         ], [
-             InlineKeyboardButton('ꜱᴛɪᴄᴋᴇʀ-ɪᴅ', callback_data='sticker'),
-             InlineKeyboardButton('ᴊ-ꜱᴏɴ', callback_data='json')
-         ], [             
-             InlineKeyboardButton('🏠 𝙷𝙾𝙼𝙴 🏠', callback_data='start')
-        ]]
-        reply_markup = InlineKeyboardMarkup(buttons)
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        await query.message.edit_text(
-            text=script.HELP_TXT.format(query.from_user.mention),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "about":
-        buttons = [[
-            InlineKeyboardButton('Sᴜᴘᴘᴏʀᴛ Gʀᴏᴜᴘ', url=GRP_LNK),
-            InlineKeyboardButton('Sᴏᴜʀᴄᴇ Cᴏᴅᴇ', url="https://")
-        ],[
-            InlineKeyboardButton('Hᴏᴍᴇ', callback_data='start'),
-            InlineKeyboardButton('Cʟᴏsᴇ', callback_data='close_data')
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(buttons)
-        await query.message.edit_text(
-            text=script.ABOUT_TXT.format(temp.U_NAME, temp.B_NAME, OWNER_LNK),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "subscription":
-        buttons = [[
-            InlineKeyboardButton('⇚Back', callback_data='start')
-        ]]
-        reply_markup = InlineKeyboardMarkup(buttons)
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        await query.message.edit_text(
-            text=script.SUBSCRIPTION_TXT.format(REFERAL_PREMEIUM_TIME, temp.U_NAME, query.from_user.id, REFERAL_COUNT),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "manuelfilter":
-        buttons = [[
-            InlineKeyboardButton('⟸ Bᴀᴄᴋ', callback_data='filters'),
-            InlineKeyboardButton('Bᴜᴛᴛᴏɴs', callback_data='button')
-        ]]
-        reply_markup = InlineKeyboardMarkup(buttons)
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        await query.message.edit_text(
-            text=script.MANUELFILTER_TXT,
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "button":
-        buttons = [[
-            InlineKeyboardButton('⟸ Bᴀᴄᴋ', callback_data='manuelfilter')
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(buttons)
-        await query.message.edit_text(
-            text=script.BUTTON_TXT,
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "autofilter":
-        buttons = [[
-            InlineKeyboardButton('⟸ Bᴀᴄᴋ', callback_data='filters')
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(buttons)
-        await query.message.edit_text(
-            text=script.AUTOFILTER_TXT,
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "coct":
-        buttons = [[
-            InlineKeyboardButton('⟸ Bᴀᴄᴋ', callback_data='help')
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(buttons)
-        await query.message.edit_text(
-            text=script.CONNECTION_TXT,
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "admin":
-        buttons = [[
-            InlineKeyboardButton('⟸ Bᴀᴄᴋ', callback_data='help'),
-            InlineKeyboardButton('ᴇxᴛʀᴀ', callback_data='extra')
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(buttons)
-        await query.message.edit_text(
-            text=script.ADMIN_TXT,
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    
-    elif query.data == "store_file":
-        buttons = [[
-            InlineKeyboardButton('⟸ Bᴀᴄᴋ', callback_data='help')
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(buttons)
-        await query.message.edit_text(
-            text=script.FILE_STORE_TXT,
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-
-    elif query.data == "r_txt":
-        buttons = [[
-            InlineKeyboardButton('⟸ Bᴀᴄᴋ', callback_data='help')
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(buttons)
-        await query.message.edit_text(
-            text=script.RENAME_TXT,
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-
-    elif query.data == "s_txt":
-        buttons = [[
-            InlineKeyboardButton('⟸ Bᴀᴄᴋ', callback_data='help')
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(buttons)
-        await query.message.edit_text(
-            text=script.STREAM_TXT,
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    
-    elif query.data == "extra":
-        buttons = [[
-            InlineKeyboardButton('⟸ Bᴀᴄᴋ', callback_data='admin')
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(buttons)
-        await query.message.edit_text(
-            text=script.EXTRAMOD_TXT.format(OWNER_LNK, CHNL_LNK),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "stats":
-        buttons = [[
-            InlineKeyboardButton('⟸ Bᴀᴄᴋ', callback_data='help'),
-            InlineKeyboardButton('⟲ Rᴇғʀᴇsʜ', callback_data='rfrsh')
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(buttons)
-        total_users = await db.total_users_count()
-        totl_chats = await db.total_chat_count()
-        filesp = col.count_documents({})
-        totalsec = sec_col.count_documents({})
-        stats = vjdb.command('dbStats')
-        used_dbSize = (stats['dataSize']/(1024*1024))+(stats['indexSize']/(1024*1024))
-        free_dbSize = 512-used_dbSize
-        stats2 = sec_db.command('dbStats')
-        used_dbSize2 = (stats2['dataSize']/(1024*1024))+(stats2['indexSize']/(1024*1024))
-        free_dbSize2 = 512-used_dbSize2
-        stats3 = mydb.command('dbStats')
-        used_dbSize3 = (stats3['dataSize']/(1024*1024))+(stats3['indexSize']/(1024*1024))
-        free_dbSize3 = 512-used_dbSize3
-        await query.message.edit_text(
-            text=script.STATUS_TXT.format((int(filesp)+int(totalsec)), total_users, totl_chats, filesp, round(used_dbSize, 2), round(free_dbSize, 2), totalsec, round(used_dbSize2, 2), round(free_dbSize2, 2), round(used_dbSize3, 2), round(free_dbSize3, 2)),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "rfrsh":
-        await query.answer("Fetching MongoDb DataBase")
-        buttons = [[
-            InlineKeyboardButton('⟸ Bᴀᴄᴋ', callback_data='help'),
-            InlineKeyboardButton('⟲ Rᴇғʀᴇsʜ', callback_data='rfrsh')
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(buttons)
-        total_users = await db.total_users_count()
-        totl_chats = await db.total_chat_count()
-        filesp = col.count_documents({})
-        totalsec = sec_col.count_documents({})
-        stats = vjdb.command('dbStats')
-        used_dbSize = (stats['dataSize']/(1024*1024))+(stats['indexSize']/(1024*1024))
-        free_dbSize = 512-used_dbSize
-        stats2 = sec_db.command('dbStats')
-        used_dbSize2 = (stats2['dataSize']/(1024*1024))+(stats2['indexSize']/(1024*1024))
-        free_dbSize2 = 512-used_dbSize2
-        stats3 = mydb.command('dbStats')
-        used_dbSize3 = (stats3['dataSize']/(1024*1024))+(stats3['indexSize']/(1024*1024))
-        free_dbSize3 = 512-used_dbSize3
-        await query.message.edit_text(
-            text=script.STATUS_TXT.format((int(filesp)+int(totalsec)), total_users, totl_chats, filesp, round(used_dbSize, 2), round(free_dbSize, 2), totalsec, round(used_dbSize2, 2), round(free_dbSize2, 2), round(used_dbSize3, 2), round(free_dbSize3, 2)),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "shortlink_info":
-        btn = [[
-            InlineKeyboardButton("👇Select Your Language 👇", callback_data="laninfo")
-        ],[
-            InlineKeyboardButton("Tamil", callback_data="tamil_info"),
-            InlineKeyboardButton("English", callback_data="english_info"),
-            InlineKeyboardButton("Hindi", callback_data="hindi_info")
-        ],[
-            InlineKeyboardButton("Malayalam", callback_data="malayalam_info"),
-            InlineKeyboardButton("Urdu", callback_data="urdu_info"),
-            InlineKeyboardButton("Bangla", callback_data="bangladesh_info")
-        ],[
-            InlineKeyboardButton("Telugu", callback_data="telugu_info"),
-            InlineKeyboardButton("Kannada", callback_data="kannada_info"),
-            InlineKeyboardButton("Gujarati", callback_data="gujarati_info")
-        ],[
-            InlineKeyboardButton("⟸ Bᴀᴄᴋ", callback_data="start")
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(btn)
-        await query.message.edit_text(
-            text=(script.SHORTLINK_INFO),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "tele":
-        btn = [[
-            InlineKeyboardButton("⟸ Bᴀᴄᴋ", callback_data="help"),
-            InlineKeyboardButton("Cᴏɴᴛᴀᴄᴛ", url="telegram.me/JNK_BACKUP")
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(btn)
-        await query.message.edit_text(
-            text=(script.TELE_TXT),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "ytdl":
-        buttons = [[
-            InlineKeyboardButton('⇍ ʙᴀᴄᴋ ⇏', callback_data='help')
-        ]]
-        reply_markup = InlineKeyboardMarkup(buttons)
-        await query.message.edit_text(
-            text="● ◌ ◌"
-        )
-        await query.message.edit_text(
-            text="● ● ◌"
-        )
-        await query.message.edit_text(
-            text="● ● ●"
-        )
-        reply_markup = InlineKeyboardMarkup(buttons)
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        await query.message.edit_text(
-            text=script.YTDL_TXT,
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "share":
-        btn = [[
-            InlineKeyboardButton("⟸ Bᴀᴄᴋ", callback_data="help"),
-            InlineKeyboardButton("Cᴏɴᴛᴀᴄᴛ", url="telegram.me/JNK_BACKUP")
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(btn)
-        await query.message.edit_text(
-            text=(script.SHARE_TXT),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "song":
-        btn = [[
-            InlineKeyboardButton("⟸ Bᴀᴄᴋ", callback_data="help"),
-            InlineKeyboardButton("Cᴏɴᴛᴀᴄᴛ", url="telegram.me/JNK_BACKUP")
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(btn)
-        await query.message.edit_text(
-            text=(script.SONG_TXT),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "json":
-        buttons = [[
-            InlineKeyboardButton('⇍ ʙᴀᴄᴋ ⇏', callback_data='help')
-        ]]
-        reply_markup = InlineKeyboardMarkup(buttons)
-        await query.message.edit_text(
-            text="● ◌ ◌"
-        )
-        await query.message.edit_text(
-            text="● ● ◌"
-        )
-        await query.message.edit_text(
-            text="● ● ●"
-        )
-        reply_markup = InlineKeyboardMarkup(buttons)
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        await query.message.edit_text(
-            text=script.JSON_TXT,
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "sticker":
-        btn = [[
-            InlineKeyboardButton("⟸ Bᴀᴄᴋ", callback_data="help"),
-            InlineKeyboardButton("Cᴏɴᴛᴀᴄᴛ", url="telegram.me/JNK_BACKUP")
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(btn)
-        await query.message.edit_text(
-            text=(script.STICKER_TXT),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "tamil_info":
-        btn = [[
-            InlineKeyboardButton("⟸ Bᴀᴄᴋ", callback_data="start"),
-            InlineKeyboardButton("Cᴏɴᴛᴀᴄᴛ", url="telegram.me/JNK_BACKUP")
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(btn)
-        await query.message.edit_text(
-            text=(script.TAMIL_INFO),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "english_info":
-        btn = [[
-            InlineKeyboardButton("⟸ Bᴀᴄᴋ", callback_data="start"),
-            InlineKeyboardButton("Cᴏɴᴛᴀᴄᴛ", url="telegram.me/JNK_BACKUP")
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(btn)
-        await query.message.edit_text(
-            text=(script.ENGLISH_INFO),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "hindi_info":
-        btn = [[
-            InlineKeyboardButton("⟸ Bᴀᴄᴋ", callback_data="start"),
-            InlineKeyboardButton("Cᴏɴᴛᴀᴄᴛ", url="telegram.me/JNK_BACKUP")
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(btn)
-        await query.message.edit_text(
-            text=(script.HINDI_INFO),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "telugu_info":
-        btn = [[
-            InlineKeyboardButton("⟸ Bᴀᴄᴋ", callback_data="start"),
-            InlineKeyboardButton("Cᴏɴᴛᴀᴄᴛ", url="telegram.me/JNK_BACKUP")
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(btn)
-        await query.message.edit_text(
-            text=(script.TELUGU_INFO),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "malayalam_info":
-        btn = [[
-            InlineKeyboardButton("⟸ Bᴀᴄᴋ", callback_data="start"),
-            InlineKeyboardButton("Cᴏɴᴛᴀᴄᴛ", url="telegram.me/JNK_BACKUP")
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(btn)
-        await query.message.edit_text(
-            text=(script.MALAYALAM_INFO),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "urdu_info":
-        btn = [[
-            InlineKeyboardButton("⟸ Bᴀᴄᴋ", callback_data="start"),
-            InlineKeyboardButton("Cᴏɴᴛᴀᴄᴛ", url="telegram.me/JNK_BACKUP")
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(btn)
-        await query.message.edit_text(
-            text=(script.URDU_INFO),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "bangladesh_info":
-        btn = [[
-            InlineKeyboardButton("⟸ Bᴀᴄᴋ", callback_data="start"),
-            InlineKeyboardButton("Cᴏɴᴛᴀᴄᴛ", url="telegram.me/JNK_BACKUP")
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(btn)
-        await query.message.edit_text(
-            text=(script.BANGLADESH_INFO),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "kannada_info":
-        btn = [[
-            InlineKeyboardButton("⟸ Bᴀᴄᴋ", callback_data="start"),
-            InlineKeyboardButton("Cᴏɴᴛᴀᴄᴛ", url="telegram.me/JNK_BACKUP")
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(btn)
-        await query.message.edit_text(
-            text=(script.KANNADA_INFO),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
-    elif query.data == "gujarati_info":
-        btn = [[
-            InlineKeyboardButton("⟸ Bᴀᴄᴋ", callback_data="start"),
-            InlineKeyboardButton("Cᴏɴᴛᴀᴄᴛ", url="telegram.me/JNK_BACKUP")
-        ]]
-        await client.edit_message_media(
-            query.message.chat.id, 
-            query.message.id, 
-            InputMediaPhoto(random.choice(PICS))
-        )
-        reply_markup = InlineKeyboardMarkup(btn)
-        await query.message.edit_text(
-            text=(script.GUJARATI_INFO),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
-        )
     elif query.data.startswith("setgs"):
         ident, set_type, status, grp_id = query.data.split("#")
         grpid = await active_connection(str(query.from_user.id))
@@ -2883,6 +2219,7 @@ async def manual_filters(client, message, text=False):
                                     ai_search = True
                                     reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
                                     await auto_filter(client, message.text, message, reply_msg, ai_search)
+
                     elif btn == "[]":
                         joelkb = await client.send_cached_media(
                             group_id,
@@ -2998,121 +2335,6 @@ async def global_filters(client, message, text=False):
                                 disable_web_page_preview=True,
                                 reply_to_message_id=reply_id
                             )
-                            manual = await manual_filters(client, message)
-                            if manual == False:
-                                settings = await get_settings(message.chat.id)
-                                try:
-                                    if settings['auto_ffilter']:
-                                        ai_search = True
-                                        reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
-                                        await auto_filter(client, message.text, message, reply_msg, ai_search)
-                                        try:
-                                            if settings['auto_delete']:
-                                                await joelkb.delete()
-                                        except KeyError:
-                                            grpid = await active_connection(str(message.from_user.id))
-                                            await save_group_settings(grpid, 'auto_delete', True)
-                                            settings = await get_settings(message.chat.id)
-                                            if settings['auto_delete']:
-                                                await joelkb.delete()
-                                    else:
-                                        try:
-                                            if settings['auto_delete']:
-                                                await asyncio.sleep(600)
-                                                await joelkb.delete()
-                                        except KeyError:
-                                            grpid = await active_connection(str(message.from_user.id))
-                                            await save_group_settings(grpid, 'auto_delete', True)
-                                            settings = await get_settings(message.chat.id)
-                                            if settings['auto_delete']:
-                                                await asyncio.sleep(600)
-                                                await joelkb.delete()
-                                except KeyError:
-                                    grpid = await active_connection(str(message.from_user.id))
-                                    await save_group_settings(grpid, 'auto_ffilter', True)
-                                    settings = await get_settings(message.chat.id)
-                                    if settings['auto_ffilter']:
-                                        ai_search = True
-                                        reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
-                                        await auto_filter(client, message.text, message, reply_msg, ai_search) 
-                            else:
-                                try:
-                                    if settings['auto_delete']:
-                                        await joelkb.delete()
-                                except KeyError:
-                                    grpid = await active_connection(str(message.from_user.id))
-                                    await save_group_settings(grpid, 'auto_delete', True)
-                                    settings = await get_settings(message.chat.id)
-                                    if settings['auto_delete']:
-                                        await joelkb.delete()
-                            
-                        else:
-                            button = eval(btn)
-                            joelkb = await client.send_message(
-                                group_id,
-                                reply_text,
-                                disable_web_page_preview=True,
-                                reply_markup=InlineKeyboardMarkup(button),
-                                reply_to_message_id=reply_id
-                            )
-                            manual = await manual_filters(client, message)
-                            if manual == False:
-                                settings = await get_settings(message.chat.id)
-                                try:
-                                    if settings['auto_ffilter']:
-                                        ai_search = True
-                                        reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
-                                        await auto_filter(client, message.text, message, reply_msg, ai_search)
-                                        try:
-                                            if settings['auto_delete']:
-                                                await joelkb.delete()
-                                        except KeyError:
-                                            grpid = await active_connection(str(message.from_user.id))
-                                            await save_group_settings(grpid, 'auto_delete', True)
-                                            settings = await get_settings(message.chat.id)
-                                            if settings['auto_delete']:
-                                                await joelkb.delete()
-                                    else:
-                                        try:
-                                            if settings['auto_delete']:
-                                                await asyncio.sleep(600)
-                                                await joelkb.delete()
-                                        except KeyError:
-                                            grpid = await active_connection(str(message.from_user.id))
-                                            await save_group_settings(grpid, 'auto_delete', True)
-                                            settings = await get_settings(message.chat.id)
-                                            if settings['auto_delete']:
-                                                await asyncio.sleep(600)
-                                                await joelkb.delete()
-                                except KeyError:
-                                    grpid = await active_connection(str(message.from_user.id))
-                                    await save_group_settings(grpid, 'auto_ffilter', True)
-                                    settings = await get_settings(message.chat.id)
-                                    if settings['auto_ffilter']:
-                                        ai_search = True
-                                        reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
-                                        await auto_filter(client, message.text, message, reply_msg, ai_search)
-                            else:
-                                try:
-                                    if settings['auto_delete']:
-                                        await joelkb.delete()
-                                except KeyError:
-                                    grpid = await active_connection(str(message.from_user.id))
-                                    await save_group_settings(grpid, 'auto_delete', True)
-                                    settings = await get_settings(message.chat.id)
-                                    if settings['auto_delete']:
-                                        await joelkb.delete()
-
-                    elif btn == "[]":
-                        joelkb = await client.send_cached_media(
-                            group_id,
-                            fileid,
-                            caption=reply_text or "",
-                            reply_to_message_id=reply_id
-                        )
-                        manual = await manual_filters(client, message)
-                        if manual == False:
-                            settings = await get_settings(message.chat.id)
                             try:
                                 if settings['auto_ffilter']:
                                     ai_search = True
@@ -3147,28 +2369,27 @@ async def global_filters(client, message, text=False):
                                     ai_search = True
                                     reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
                                     await auto_filter(client, message.text, message, reply_msg, ai_search) 
+                            
+                            else:
+                                try:
+                                    if settings['auto_delete']:
+                                        await joelkb.delete()
+                                except KeyError:
+                                    grpid = await active_connection(str(message.from_user.id))
+                                    await save_group_settings(grpid, 'auto_delete', True)
+                                    settings = await get_settings(message.chat.id)
+                                    if settings['auto_delete']:
+                                        await joelkb.delete()
+                            
                         else:
-                            try:
-                                if settings['auto_delete']:
-                                    await joelkb.delete()
-                            except KeyError:
-                                grpid = await active_connection(str(message.from_user.id))
-                                await save_group_settings(grpid, 'auto_delete', True)
-                                settings = await get_settings(message.chat.id)
-                                if settings['auto_delete']:
-                                    await joelkb.delete()
-
-                    else:
-                        button = eval(btn)
-                        joelkb = await message.reply_cached_media(
-                            fileid,
-                            caption=reply_text or "",
-                            reply_markup=InlineKeyboardMarkup(button),
-                            reply_to_message_id=reply_id
-                        )
-                        manual = await manual_filters(client, message)
-                        if manual == False:
-                            settings = await get_settings(message.chat.id)
+                            button = eval(btn)
+                            joelkb = await client.send_message(
+                                group_id,
+                                reply_text,
+                                disable_web_page_preview=True,
+                                reply_markup=InlineKeyboardMarkup(button),
+                                reply_to_message_id=reply_id
+                            )
                             try:
                                 if settings['auto_ffilter']:
                                     ai_search = True
@@ -3203,6 +2424,100 @@ async def global_filters(client, message, text=False):
                                     ai_search = True
                                     reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
                                     await auto_filter(client, message.text, message, reply_msg, ai_search)
+                            else:
+                                try:
+                                    if settings['auto_delete']:
+                                        await joelkb.delete()
+                                except KeyError:
+                                    grpid = await active_connection(str(message.from_user.id))
+                                    await save_group_settings(grpid, 'auto_delete', True)
+                                    settings = await get_settings(message.chat.id)
+                                    if settings['auto_delete']:
+                                        await joelkb.delete()
+
+                    elif btn == "[]":
+                        joelkb = await client.send_cached_media(
+                            group_id,
+                            fileid,
+                            caption=reply_text or "",
+                            reply_to_message_id=reply_id
+                        )
+                        try:
+                            if settings['auto_ffilter']:
+                                ai_search = True
+                                reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
+                                await auto_filter(client, message.text, message, reply_msg, ai_search)
+                                try:
+                                    if settings['auto_delete']:
+                                        await joelkb.delete()
+                                except KeyError:
+                                    grpid = await active_connection(str(message.from_user.id))
+                                    await save_group_settings(grpid, 'auto_delete', True)
+                                    settings = await get_settings(message.chat.id)
+                                    if settings['auto_delete']:
+                                        await joelkb.delete()
+                            else:
+                                try:
+                                    if settings['auto_delete']:
+                                        await asyncio.sleep(600)
+                                        await joelkb.delete()
+                                except KeyError:
+                                    grpid = await active_connection(str(message.from_user.id))
+                                    await save_group_settings(grpid, 'auto_delete', True)
+                                    settings = await get_settings(message.chat.id)
+                                    if settings['auto_delete']:
+                                        await asyncio.sleep(600)
+                                        await joelkb.delete()
+                        except KeyError:
+                            grpid = await active_connection(str(message.from_user.id))
+                            await save_group_settings(grpid, 'auto_ffilter', True)
+                            settings = await get_settings(message.chat.id)
+                            if settings['auto_ffilter']:
+                                ai_search = True
+                                reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
+                                await auto_filter(client, message.text, message, reply_msg, ai_search) 
+                    else:
+                        button = eval(btn)
+                        joelkb = await message.reply_cached_media(
+                            fileid,
+                            caption=reply_text or "",
+                            reply_markup=InlineKeyboardMarkup(button),
+                            reply_to_message_id=reply_id
+                        )
+                        try:
+                            if settings['auto_ffilter']:
+                                ai_search = True
+                                reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
+                                await auto_filter(client, message.text, message, reply_msg, ai_search)
+                                try:
+                                    if settings['auto_delete']:
+                                        await joelkb.delete()
+                                except KeyError:
+                                    grpid = await active_connection(str(message.from_user.id))
+                                    await save_group_settings(grpid, 'auto_delete', True)
+                                    settings = await get_settings(message.chat.id)
+                                    if settings['auto_delete']:
+                                        await joelkb.delete()
+                            else:
+                                try:
+                                    if settings['auto_delete']:
+                                        await asyncio.sleep(600)
+                                        await joelkb.delete()
+                                except KeyError:
+                                    grpid = await active_connection(str(message.from_user.id))
+                                    await save_group_settings(grpid, 'auto_delete', True)
+                                    settings = await get_settings(message.chat.id)
+                                    if settings['auto_delete']:
+                                        await asyncio.sleep(600)
+                                        await joelkb.delete()
+                        except KeyError:
+                            grpid = await active_connection(str(message.from_user.id))
+                            await save_group_settings(grpid, 'auto_ffilter', True)
+                            settings = await get_settings(message.chat.id)
+                            if settings['auto_ffilter']:
+                                ai_search = True
+                                reply_msg = await message.reply_text(f"<b><i>Searching For {message.text} 🔍</i></b>")
+                                await auto_filter(client, message.text, message, reply_msg, ai_search)
                         else:
                             try:
                                 if settings['auto_delete']:
@@ -3221,3 +2536,77 @@ async def global_filters(client, message, text=False):
     else:
         return False
 
+
+async def get_force_sub_buttons(bot, message):
+    btn = []
+    if FORCE_SUB_CHANNELS:
+        channels = FORCE_SUB_CHANNELS.split()
+        for channel in channels:
+            try:
+                chat = await bot.get_chat(int(channel))
+                invite_link = chat.invite_link
+                if invite_link:
+                    btn.append([InlineKeyboardButton(f"• {chat.title} •", url=invite_link)])
+            except Exception as e:
+                print(f"Error fetching invite link for channel {channel}: {e}")
+                btn.append([InlineKeyboardButton(f"• Channel Error •", url="https://t.me/error")])
+    
+    if btn:
+        btn.append([InlineKeyboardButton("✅ I Have Joined ✅", callback_data=f"unmuteme#{message.from_user.id}")])
+        return btn
+    else:
+        return None
+
+async def is_force_subscribed(bot, message):
+    user_id = message.from_user.id
+    if FORCE_SUB_CHANNELS:
+        channels = FORCE_SUB_CHANNELS.split()
+        for channel in channels:
+            try:
+                result = await bot.get_chat_member(int(channel), user_id)
+                if result.status in [enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.KICKED]:
+                    return False
+            except PeerIdInvalid:
+                print(f"PeerIdInvalid for channel {channel}")
+                return False
+            except Exception as e:
+                print(f"Error checking subscription for channel {channel}: {e}")
+                return False
+    return True
+
+async def pub_is_subscribed(bot, query, channel_ids):
+    btn = []
+    if channel_ids:
+        channels = channel_ids.split()
+        for channel in channels:
+            try:
+                chat = await bot.get_chat(int(channel))
+                invite_link = chat.invite_link
+                if invite_link:
+                    btn.append([InlineKeyboardButton(f"• {chat.title} •", url=invite_link)])
+                else:
+                    btn.append([InlineKeyboardButton(f"• {chat.title} •", url=f"https://t.me/{chat.username}")])
+            except PeerIdInvalid:
+                print(f"PeerIdInvalid for channel {channel}")
+                btn.append([InlineKeyboardButton(f"• Channel Error •", url="https://t.me/error")])
+            except Exception as e:
+                print(f"Error fetching invite link for channel {channel}: {e}")
+                btn.append([InlineKeyboardButton(f"• Channel Error •", url="https://t.me/error")])
+    return btn
+
+async def is_subscribed(bot, query):
+    if AUTH_CHANNEL:
+        channels = AUTH_CHANNEL.split()
+        for channel in channels:
+            try:
+                result = await bot.get_chat_member(int(channel), query.from_user.id)
+                if result.status in [enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.KICKED]:
+                    return False
+            except PeerIdInvalid:
+                print(f"PeerIdInvalid for channel {channel}")
+                return False
+            except Exception as e:
+                print(f"Error checking subscription for channel {channel}: {e}")
+                return False
+        return True
+    return False
