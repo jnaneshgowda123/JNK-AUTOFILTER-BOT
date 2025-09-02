@@ -738,31 +738,59 @@ async def get_seconds(time_string):
         return 0
 
 async def is_force_subscribed(bot, message):
-    from info import FORCE_SUB_CHANNELS
+    from info import FORCE_SUB_CHANNELS, AUTH_CHANNEL
     from pyrogram import enums
-    from pyrogram.errors import PeerIdInvalid
+    from pyrogram.errors import PeerIdInvalid, UserNotParticipant
     
     user_id = message.from_user.id
+    
+    # Check AUTH_CHANNEL first
+    if AUTH_CHANNEL:
+        try:
+            result = await bot.get_chat_member(int(AUTH_CHANNEL), user_id)
+            if result.status in [enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.KICKED]:
+                return False
+        except (PeerIdInvalid, UserNotParticipant):
+            return False
+        except Exception as e:
+            print(f"Error checking AUTH_CHANNEL subscription: {e}")
+            return False
+    
+    # Check FORCE_SUB_CHANNELS
     if FORCE_SUB_CHANNELS:
-        channels = FORCE_SUB_CHANNELS
-        for channel in channels:
+        for channel in FORCE_SUB_CHANNELS:
             try:
                 result = await bot.get_chat_member(int(channel), user_id)
                 if result.status in [enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.KICKED]:
                     return False
-            except PeerIdInvalid:
-                print(f"PeerIdInvalid for channel {channel}")
+            except (PeerIdInvalid, UserNotParticipant):
                 return False
             except Exception as e:
                 print(f"Error checking subscription for channel {channel}: {e}")
                 return False
+    
     return True
 
 async def get_force_sub_buttons(bot, message):
-    from info import FORCE_SUB_CHANNELS
+    from info import FORCE_SUB_CHANNELS, AUTH_CHANNEL
     from pyrogram.types import InlineKeyboardButton
     
     btn = []
+    
+    # Add AUTH_CHANNEL button first
+    if AUTH_CHANNEL:
+        try:
+            chat = await bot.get_chat(int(AUTH_CHANNEL))
+            invite_link = chat.invite_link
+            if invite_link:
+                btn.append([InlineKeyboardButton(f"• {chat.title} •", url=invite_link)])
+            else:
+                btn.append([InlineKeyboardButton(f"• {chat.title} •", url=f"https://t.me/{chat.username}")])
+        except Exception as e:
+            print(f"Error fetching invite link for AUTH_CHANNEL: {e}")
+            btn.append([InlineKeyboardButton(f"• Main Channel •", url="https://t.me/JNK_BACKUP")])
+    
+    # Add FORCE_SUB_CHANNELS buttons
     if FORCE_SUB_CHANNELS:
         for channel in FORCE_SUB_CHANNELS:
             try:
@@ -774,10 +802,10 @@ async def get_force_sub_buttons(bot, message):
                     btn.append([InlineKeyboardButton(f"• {chat.title} •", url=f"https://t.me/{chat.username}")])
             except Exception as e:
                 print(f"Error fetching invite link for channel {channel}: {e}")
-                btn.append([InlineKeyboardButton(f"• Channel Error •", url="https://t.me/error")])
+                btn.append([InlineKeyboardButton(f"• Channel Error •", url="https://t.me/JNK_BACKUP")])
     
     if btn:
-        btn.append([InlineKeyboardButton("✅ I Have Joined ✅", callback_data=f"unmuteme#{message.from_user.id}")])
+        btn.append([InlineKeyboardButton("🔄 Try Again 🔄", callback_data=f"unmuteme#{message.from_user.id}")])
         return btn
     else:
         return None
