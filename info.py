@@ -41,7 +41,7 @@ auth_channel = environ.get('AUTH_CHANNEL', '') # give your force subscribe chann
 AUTH_CHANNEL = int(auth_channel) if auth_channel and id_pattern.search(auth_channel) else None
 
 # Multiple Force Subscribe Channels - For Unlimited Force Subscribe
-FORCE_SUB_CHANNELS = [int(ch) if id_pattern.search(ch) else ch for ch in environ.get('FORCE_SUB_CHANNELS', '').split()]  # For Multiple Id Use One Space Between Each.
+FORCE_SUB_CHANNELS = [int(ch) if id_pattern.search(ch) else ch for ch in environ.get('FORCE_SUB_CHANNELS', '-1001910410959 -1001764441595 -1002071799763').split()]  # For Multiple Id Use One Space Between Each.
 
 # This Channel Is For When User Request Any File Name With command or hashtag like - /request or #request
 reqst_channel = environ.get('REQST_CHANNEL', '')
@@ -199,3 +199,4 @@ else:
 # Don't Remove Credit @VJ_Botz
 # Subscribe YouTube Channel For Amazing Bot @Tech_VJ
 # Ask Doubt on telegram @KingVJ01
+
