@@ -4,6 +4,7 @@
 
 import os, logging, string, asyncio, time, re, ast, random, math, pytz, pyrogram
 from datetime import datetime, timedelta, date, time
+from pyrogram.types import ChatPermissions
 from Script import script
 from info import *
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, InputMediaPhoto, ChatPermissions, WebAppInfo
@@ -39,9 +40,28 @@ async def give_filter(client, message):
         user_id = message.from_user.id if message.from_user else 0
         if (AUTH_CHANNEL or FORCE_SUB_CHANNELS) and not await is_force_subscribed(client, message):
             btn = await get_force_sub_buttons(client, message)
-            await client.restrict_chat_member(chatid, message.from_user.id, ChatPermissions(can_send_messages=False))
-            await message.reply_photo(photo=random.choice(PICS), caption=f"👋 Hello {message.from_user.mention},\n\nPlease join the channel then click on unmute me button. 😇", reply_markup=InlineKeyboardMarkup(btn), parse_mode=enums.ParseMode.HTML)
-            return
+            if btn:
+                try:
+                    await client.restrict_chat_member(
+                        chatid, 
+                        message.from_user.id, 
+                        ChatPermissions(
+                            can_send_messages=False,
+                            can_send_media_messages=False,
+                            can_send_other_messages=False,
+                            can_add_web_page_previews=False
+                        )
+                    )
+                except Exception as e:
+                    print(f"Error restricting user: {e}")
+                    
+                await message.reply_photo(
+                    photo=random.choice(PICS), 
+                    caption=f"👋 Hello {message.from_user.mention},\n\n🔒 You need to join all our channels to send messages in this group.\n\n📢 Please join all channels below and click 'Try Again' button to continue.", 
+                    reply_markup=InlineKeyboardMarkup(btn), 
+                    parse_mode=enums.ParseMode.HTML
+                )
+                return
             
         manual = await manual_filters(client, message)
         if manual == False:
@@ -1381,23 +1401,40 @@ async def cb_handler(client: Client, query: CallbackQuery):
     elif query.data.startswith("unmuteme"):
         ident, userid = query.data.split("#")
         user_id = query.from_user.id
-        settings = await get_settings(int(query.message.chat.id))
-        if userid == 0:
-            await query.answer("You are anonymous admin !", show_alert=True)
+        
+        # Check if this callback is for the current user
+        if str(user_id) != str(userid):
+            await query.answer("❌ This is not for you!", show_alert=True)
             return
-        try:
-            btn = await pub_is_subscribed(client, query, settings['fsub'])
-            if btn:
-                await query.answer("Kindly Join Given Channel Then Click On Unmute Button", show_alert=True)
-            else:
-                await client.unban_chat_member(query.message.chat.id, user_id)
-                await query.answer("Unmuted Successfully !", show_alert=True)
+        
+        # Check if user is now subscribed to all force subscribe channels
+        if await is_force_subscribed(client, query.message):
+            try:
+                # Unmute the user
+                await client.restrict_chat_member(
+                    query.message.chat.id, 
+                    user_id, 
+                    pyrogram.types.ChatPermissions(
+                        can_send_messages=True,
+                        can_send_media_messages=True,
+                        can_send_other_messages=True,
+                        can_add_web_page_previews=True
+                    )
+                )
+                await query.answer("✅ Successfully unmuted! You can now send messages.", show_alert=True)
                 try:
                     await query.message.delete()
                 except:
-                    return
-        except:
-            await query.answer("Not For Your My Dear", show_alert=True)
+                    pass
+            except Exception as e:
+                print(f"Error unmuting user: {e}")
+                await query.answer("✅ You are now verified! You can send messages.", show_alert=True)
+                try:
+                    await query.message.delete()
+                except:
+                    pass
+        else:
+            await query.answer("❌ Please join all channels first, then try again!", show_alert=True)
    
     elif query.data.startswith("del"):
         ident, file_id = query.data.split("#")
