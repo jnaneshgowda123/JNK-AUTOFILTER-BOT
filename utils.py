@@ -748,44 +748,45 @@ async def is_force_subscribed(bot, message):
     if AUTH_CHANNEL:
         try:
             result = await bot.get_chat_member(int(AUTH_CHANNEL), user_id)
+            # Check if user is not a member
             if result.status in [enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.KICKED]:
                 return False
+            # User is a member (admin, owner, member, restricted)
+            return True
+        except UserNotParticipant:
+            # User is definitely not in the channel
+            return False
         except ChatAdminRequired:
-            # Bot doesn't have admin rights, try alternative method
-            try:
-                # Try sending a message to check if user is in channel
-                await bot.send_chat_action(int(AUTH_CHANNEL), enums.ChatAction.TYPING)
-                return True  # If no error, assume user is subscribed
-            except Exception as e:
-                print(f"Error checking AUTH_CHANNEL subscription with limited permissions: {e}")
-                # Return True to avoid blocking users when we can't check
-                return True
+            # Bot doesn't have enough permissions to check membership
+            # Since we can't verify, we'll assume user needs to join
+            print(f"Bot needs admin rights in AUTH_CHANNEL {AUTH_CHANNEL} to check membership")
+            return False
         except Exception as e:
             print(f"Error checking AUTH_CHANNEL subscription: {e}")
-            # Return True to avoid blocking users when we can't check
-            return True
+            # If we can't check, assume user needs to join for security
+            return False
 
     # Check FORCE_SUB_CHANNELS
     if FORCE_SUB_CHANNELS:
         for channel in FORCE_SUB_CHANNELS:
             try:
                 result = await bot.get_chat_member(int(channel), user_id)
+                # Check if user is not a member
                 if result.status in [enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.KICKED]:
                     return False
+                # Continue checking other channels if this one is fine
+                continue
+            except UserNotParticipant:
+                # User is definitely not in this channel
+                return False
             except ChatAdminRequired:
-                # Bot doesn't have admin rights, try alternative method
-                try:
-                    # Try sending a message to check if user is in channel
-                    await bot.send_chat_action(int(channel), enums.ChatAction.TYPING)
-                    return True  # If no error, assume user is subscribed
-                except Exception as e:
-                    print(f"Error checking subscription for channel {channel} with limited permissions: {e}")
-                    # Return True to avoid blocking users when we can't check
-                    return True
+                # Bot doesn't have enough permissions to check membership
+                print(f"Bot needs admin rights in channel {channel} to check membership")
+                return False
             except Exception as e:
                 print(f"Error checking subscription for channel {channel}: {e}")
-                # Return True to avoid blocking users when we can't check
-                return True
+                # If we can't check, assume user needs to join for security
+                return False
 
     return True
 
@@ -799,28 +800,22 @@ async def get_force_sub_buttons(bot, message):
     if AUTH_CHANNEL:
         try:
             chat = await bot.get_chat(int(AUTH_CHANNEL))
-            invite_link = chat.invite_link
-            if invite_link:
-                btn.append([InlineKeyboardButton(f'• {chat.title} •', url=invite_link)])
-            else:
-                btn.append([InlineKeyboardButton(f'• {chat.title} •', url=f"https://t.me/{chat.username}")])
+            invite_link = chat.invite_link or f"https://t.me/{chat.username}" if chat.username else "https://t.me/JNK_BACKUP"
+            btn.append([InlineKeyboardButton(f'• Join {chat.title} •', url=invite_link)])
         except Exception as e:
             print(f"Error fetching invite link for AUTH_CHANNEL: {e}")
-            btn.append([InlineKeyboardButton(f'• Main Channel •', url="https://t.me/JNK_BACKUP")])
+            btn.append([InlineKeyboardButton(f'• Join Main Channel •', url="https://t.me/JNK_BACKUP")])
 
     # Add FORCE_SUB_CHANNELS buttons
     if FORCE_SUB_CHANNELS:
         for channel in FORCE_SUB_CHANNELS:
             try:
                 chat = await bot.get_chat(int(channel))
-                invite_link = chat.invite_link
-                if invite_link:
-                    btn.append([InlineKeyboardButton(f'• {chat.title} •', url=invite_link)])
-                else:
-                    btn.append([InlineKeyboardButton(f'• {chat.title} •', url=f"https://t.me/{chat.username}")])
+                invite_link = chat.invite_link or f"https://t.me/{chat.username}" if chat.username else "https://t.me/JNK_BACKUP"
+                btn.append([InlineKeyboardButton(f'• Join {chat.title} •', url=invite_link)])
             except Exception as e:
                 print(f"Error fetching invite link for channel {channel}: {e}")
-                btn.append([InlineKeyboardButton(f'• Channel Error •', url="https://t.me/JNK_BACKUP")])
+                btn.append([InlineKeyboardButton(f'• Join Channel •', url="https://t.me/JNK_BACKUP")])
 
     if btn:
         btn.append([InlineKeyboardButton("🔄 Try Again 🔄", callback_data=f"unmuteme#{message.from_user.id}")])
@@ -832,7 +827,7 @@ async def get_unjoined_force_sub_buttons(bot, message):
     from info import FORCE_SUB_CHANNELS, AUTH_CHANNEL
     from pyrogram.types import InlineKeyboardButton
     from pyrogram import enums
-    from pyrogram.errors import ChatAdminRequired
+    from pyrogram.errors import ChatAdminRequired, UserNotParticipant
 
     btn = []
     user_id = message.from_user.id
@@ -841,34 +836,27 @@ async def get_unjoined_force_sub_buttons(bot, message):
     if AUTH_CHANNEL:
         try:
             result = await bot.get_chat_member(int(AUTH_CHANNEL), user_id)
+            # If user is banned, left, or kicked, show join button
             if result.status in [enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.KICKED]:
                 chat = await bot.get_chat(int(AUTH_CHANNEL))
-                invite_link = chat.invite_link
-                if invite_link:
-                    btn.append([InlineKeyboardButton(f"❌ {chat.title} ❌", url=invite_link)])
-                else:
-                    btn.append([InlineKeyboardButton(f"❌ {chat.title} ❌", url=f"https://t.me/{chat.username}")])
-        except ChatAdminRequired:
-            # Bot doesn't have admin rights, show join button anyway
+                invite_link = chat.invite_link or f"https://t.me/{chat.username}" if chat.username else "https://t.me/JNK_BACKUP"
+                btn.append([InlineKeyboardButton(f"❌ Join {chat.title} ❌", url=invite_link)])
+        except UserNotParticipant:
+            # User is not a participant, show join button
             try:
                 chat = await bot.get_chat(int(AUTH_CHANNEL))
-                invite_link = chat.invite_link
-                if invite_link:
-                    btn.append([InlineKeyboardButton(f"🔐 Join {chat.title}", url=invite_link)])
-                else:
-                    btn.append([InlineKeyboardButton(f"🔐 Join {chat.title}", url=f"https://t.me/{chat.username}")])
+                invite_link = chat.invite_link or f"https://t.me/{chat.username}" if chat.username else "https://t.me/JNK_BACKUP"
+                btn.append([InlineKeyboardButton(f"🔐 Join {chat.title}", url=invite_link)])
             except Exception as e:
                 print(f"Error getting AUTH_CHANNEL info: {e}")
                 btn.append([InlineKeyboardButton(f"🔐 Join Main Channel", url="https://t.me/JNK_BACKUP")])
-        except Exception as e:
+        except (ChatAdminRequired, Exception) as e:
+            # Bot doesn't have enough permissions or other error
             print(f"Error checking AUTH_CHANNEL subscription: {e}")
             try:
                 chat = await bot.get_chat(int(AUTH_CHANNEL))
-                invite_link = chat.invite_link
-                if invite_link:
-                    btn.append([InlineKeyboardButton(f"🔐 Join {chat.title}", url=invite_link)])
-                else:
-                    btn.append([InlineKeyboardButton(f"🔐 Join {chat.title}", url=f"https://t.me/{chat.username}")])
+                invite_link = chat.invite_link or f"https://t.me/{chat.username}" if chat.username else "https://t.me/JNK_BACKUP"
+                btn.append([InlineKeyboardButton(f"🔐 Join {chat.title}", url=invite_link)])
             except:
                 btn.append([InlineKeyboardButton(f"🔐 Join Main Channel", url="https://t.me/JNK_BACKUP")])
 
@@ -877,34 +865,27 @@ async def get_unjoined_force_sub_buttons(bot, message):
         for channel in FORCE_SUB_CHANNELS:
             try:
                 result = await bot.get_chat_member(int(channel), user_id)
+                # If user is banned, left, or kicked, show join button
                 if result.status in [enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.KICKED]:
                     chat = await bot.get_chat(int(channel))
-                    invite_link = chat.invite_link
-                    if invite_link:
-                        btn.append([InlineKeyboardButton(f"❌ {chat.title} ❌", url=invite_link)])
-                    else:
-                        btn.append([InlineKeyboardButton(f"❌ {chat.title} ❌", url=f"https://t.me/{chat.username}")])
-            except ChatAdminRequired:
-                # Bot doesn't have admin rights, show join button anyway
+                    invite_link = chat.invite_link or f"https://t.me/{chat.username}" if chat.username else "https://t.me/JNK_BACKUP"
+                    btn.append([InlineKeyboardButton(f"❌ Join {chat.title} ❌", url=invite_link)])
+            except UserNotParticipant:
+                # User is not a participant, show join button
                 try:
                     chat = await bot.get_chat(int(channel))
-                    invite_link = chat.invite_link
-                    if invite_link:
-                        btn.append([InlineKeyboardButton(f"🔐 Join {chat.title}", url=invite_link)])
-                    else:
-                        btn.append([InlineKeyboardButton(f"🔐 Join {chat.title}", url=f"https://t.me/{chat.username}")])
+                    invite_link = chat.invite_link or f"https://t.me/{chat.username}" if chat.username else "https://t.me/JNK_BACKUP"
+                    btn.append([InlineKeyboardButton(f"🔐 Join {chat.title}", url=invite_link)])
                 except Exception as e:
                     print(f"Error getting channel {channel} info: {e}")
                     btn.append([InlineKeyboardButton(f"🔐 Join Channel", url="https://t.me/JNK_BACKUP")])
-            except Exception as e:
+            except (ChatAdminRequired, Exception) as e:
+                # Bot doesn't have enough permissions or other error
                 print(f"Error checking subscription for channel {channel}: {e}")
                 try:
                     chat = await bot.get_chat(int(channel))
-                    invite_link = chat.invite_link
-                    if invite_link:
-                        btn.append([InlineKeyboardButton(f"🔐 Join {chat.title}", url=invite_link)])
-                    else:
-                        btn.append([InlineKeyboardButton(f"🔐 Join {chat.title}", url=f"https://t.me/{chat.username}")])
+                    invite_link = chat.invite_link or f"https://t.me/{chat.username}" if chat.username else "https://t.me/JNK_BACKUP"
+                    btn.append([InlineKeyboardButton(f"🔐 Join {chat.title}", url=invite_link)])
                 except:
                     btn.append([InlineKeyboardButton(f"🔐 Join Channel", url="https://t.me/JNK_BACKUP")])
 
