@@ -750,8 +750,6 @@ async def is_force_subscribed(bot, message):
             result = await bot.get_chat_member(int(AUTH_CHANNEL), user_id)
             if result.status in [enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.KICKED]:
                 return False
-        except (PeerIdInvalid, UserNotParticipant):
-            return False
         except Exception as e:
             print(f"Error checking AUTH_CHANNEL subscription: {e}")
             return False
@@ -763,8 +761,6 @@ async def is_force_subscribed(bot, message):
                 result = await bot.get_chat_member(int(channel), user_id)
                 if result.status in [enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.KICKED]:
                     return False
-            except (PeerIdInvalid, UserNotParticipant):
-                return False
             except Exception as e:
                 print(f"Error checking subscription for channel {channel}: {e}")
                 return False
