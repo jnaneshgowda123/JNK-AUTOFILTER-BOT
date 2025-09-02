@@ -841,38 +841,36 @@ async def get_unjoined_force_sub_buttons(bot, message):
             print(f"Error getting info for chat {chat_id}: {e}")
             btn.append([InlineKeyboardButton(f"🔐 Join {fallback_name}", url="https://t.me/JNK_BACKUP")])
 
-    # Check AUTH_CHANNEL first
-    if AUTH_CHANNEL:
+    async def check_and_add(chat_id, fallback="Channel"):
         try:
-            result = await bot.get_chat_member(int(AUTH_CHANNEL), user_id)
-            if result.status in [enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.KICKED]:
-                await add_join_button(AUTH_CHANNEL, "Main Channel")
+            member = await bot.get_chat_member(int(chat_id), user_id)
+            if member.status in [
+                enums.ChatMemberStatus.LEFT,
+                enums.ChatMemberStatus.KICKED,
+                enums.ChatMemberStatus.BANNED
+            ]:
+                await add_join_button(chat_id, fallback)
         except UserNotParticipant:
-            await add_join_button(AUTH_CHANNEL, "Main Channel")
+            await add_join_button(chat_id, fallback)
         except ChatAdminRequired:
-            await add_join_button(AUTH_CHANNEL, "Main Channel")
+            # Bot not admin: fallback to showing join button
+            await add_join_button(chat_id, fallback)
         except Exception as e:
-            print(f"Error checking AUTH_CHANNEL {AUTH_CHANNEL}: {e}")
-            await add_join_button(AUTH_CHANNEL, "Main Channel")
+            print(f"Error checking membership in {chat_id}: {e}")
+            await add_join_button(chat_id, fallback)
+
+    # Check AUTH_CHANNEL
+    if AUTH_CHANNEL:
+        await check_and_add(AUTH_CHANNEL, "Main Channel")
 
     # Check FORCE_SUB_CHANNELS
     if FORCE_SUB_CHANNELS:
         for channel in FORCE_SUB_CHANNELS:
-            try:
-                result = await bot.get_chat_member(int(channel), user_id)
-                if result.status in [enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.KICKED]:
-                    await add_join_button(channel)
-            except UserNotParticipant:
-                await add_join_button(channel)
-            except ChatAdminRequired:
-                await add_join_button(channel)
-            except Exception as e:
-                print(f"Error checking FORCE_SUB channel {channel}: {e}")
-                await add_join_button(channel)
+            await check_and_add(channel)
 
-    # Add retry button if any join button was added
     if btn:
         btn.append([InlineKeyboardButton("🔄 Try Again 🔄", callback_data=f"unmuteme#{user_id}")])
         return btn
     return None
+
 
