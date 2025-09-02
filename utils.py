@@ -780,9 +780,9 @@ async def is_force_subscribed(bot, message):
         
         try:
             result = await bot.get_chat_member(int(AUTH_CHANNEL), user_id)
-            # Check if user is not a member
-            if result.status in [enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.KICKED]:
-                print(f"User {user_id} is not a member of AUTH_CHANNEL {AUTH_CHANNEL}")
+            # Check if user is not a member - only allow MEMBER, ADMINISTRATOR, OWNER
+            if result.status not in [enums.ChatMemberStatus.MEMBER, enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER]:
+                print(f"User {user_id} is not subscribed to AUTH_CHANNEL {AUTH_CHANNEL} - Status: {result.status}")
                 return False
         except UserNotParticipant:
             print(f"User {user_id} is not a participant in AUTH_CHANNEL {AUTH_CHANNEL}")
@@ -801,9 +801,9 @@ async def is_force_subscribed(bot, message):
             
             try:
                 result = await bot.get_chat_member(int(channel), user_id)
-                # Check if user is not a member
-                if result.status in [enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.KICKED]:
-                    print(f"User {user_id} is not a member of channel {channel}")
+                # Check if user is not a member - only allow MEMBER, ADMINISTRATOR, OWNER
+                if result.status not in [enums.ChatMemberStatus.MEMBER, enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER]:
+                    print(f"User {user_id} is not subscribed to channel {channel} - Status: {result.status}")
                     return False
             except UserNotParticipant:
                 print(f"User {user_id} is not a participant in channel {channel}")
@@ -868,8 +868,8 @@ async def get_unjoined_force_sub_buttons(bot, message):
     if AUTH_CHANNEL and await check_bot_admin_status(bot, AUTH_CHANNEL):
         try:
             result = await bot.get_chat_member(int(AUTH_CHANNEL), user_id)
-            # If user is banned, left, or kicked, show join button
-            if result.status in [enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.KICKED]:
+            # Show join button if user is not subscribed (not MEMBER, ADMINISTRATOR, or OWNER)
+            if result.status not in [enums.ChatMemberStatus.MEMBER, enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER]:
                 chat = await bot.get_chat(int(AUTH_CHANNEL))
                 invite_link = chat.invite_link or f"https://t.me/{chat.username}" if chat.username else "https://t.me/JNK_BACKUP"
                 btn.append([InlineKeyboardButton(f"❌ Join {chat.title} ❌", url=invite_link)])
@@ -892,8 +892,8 @@ async def get_unjoined_force_sub_buttons(bot, message):
             if await check_bot_admin_status(bot, channel):
                 try:
                     result = await bot.get_chat_member(int(channel), user_id)
-                    # If user is banned, left, or kicked, show join button
-                    if result.status in [enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.KICKED]:
+                    # Show join button if user is not subscribed (not MEMBER, ADMINISTRATOR, or OWNER)
+                    if result.status not in [enums.ChatMemberStatus.MEMBER, enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER]:
                         chat = await bot.get_chat(int(channel))
                         invite_link = chat.invite_link or f"https://t.me/{chat.username}" if chat.username else "https://t.me/JNK_BACKUP"
                         btn.append([InlineKeyboardButton(f"❌ Join {chat.title} ❌", url=invite_link)])
