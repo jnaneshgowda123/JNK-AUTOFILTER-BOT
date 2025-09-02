@@ -736,3 +736,48 @@ async def get_seconds(time_string):
         return value * 86400 * 365
     else:
         return 0
+
+async def is_force_subscribed(bot, message):
+    from info import FORCE_SUB_CHANNELS
+    from pyrogram import enums
+    from pyrogram.errors import PeerIdInvalid
+    
+    user_id = message.from_user.id
+    if FORCE_SUB_CHANNELS:
+        channels = FORCE_SUB_CHANNELS
+        for channel in channels:
+            try:
+                result = await bot.get_chat_member(int(channel), user_id)
+                if result.status in [enums.ChatMemberStatus.BANNED, enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.KICKED]:
+                    return False
+            except PeerIdInvalid:
+                print(f"PeerIdInvalid for channel {channel}")
+                return False
+            except Exception as e:
+                print(f"Error checking subscription for channel {channel}: {e}")
+                return False
+    return True
+
+async def get_force_sub_buttons(bot, message):
+    from info import FORCE_SUB_CHANNELS
+    from pyrogram.types import InlineKeyboardButton
+    
+    btn = []
+    if FORCE_SUB_CHANNELS:
+        for channel in FORCE_SUB_CHANNELS:
+            try:
+                chat = await bot.get_chat(int(channel))
+                invite_link = chat.invite_link
+                if invite_link:
+                    btn.append([InlineKeyboardButton(f"• {chat.title} •", url=invite_link)])
+                else:
+                    btn.append([InlineKeyboardButton(f"• {chat.title} •", url=f"https://t.me/{chat.username}")])
+            except Exception as e:
+                print(f"Error fetching invite link for channel {channel}: {e}")
+                btn.append([InlineKeyboardButton(f"• Channel Error •", url="https://t.me/error")])
+    
+    if btn:
+        btn.append([InlineKeyboardButton("✅ I Have Joined ✅", callback_data=f"unmuteme#{message.from_user.id}")])
+        return btn
+    else:
+        return None
