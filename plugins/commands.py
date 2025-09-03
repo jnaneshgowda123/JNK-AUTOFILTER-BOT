@@ -20,6 +20,24 @@ logger = logging.getLogger(__name__)
 BATCH_FILES = {}
 join_db = JoinReqs
 
+async def check_force_subscribe(client, message):
+    if not CHANNELS: # If CHANNELS list is empty or None, no force subscribe needed
+        return []
+    
+    not_subscribed = []
+    for channel_id in CHANNELS:
+        try:
+            chat = await client.get_chat(channel_id)
+            is_member = await client.get_chat_member(chat.id, message.from_user.id)
+            if is_member.status in [enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.BANNED]:
+                not_subscribed.append(channel_id)
+        except Exception as e:
+            print(f"Error checking membership for channel {channel_id}: {e}")
+            # Optionally, you could add this channel to a list of problematic channels
+            # or decide how to handle it (e.g., skip it, report it)
+            pass # Continue to the next channel if there's an error
+    return not_subscribed
+
 @Client.on_message(filters.command("start") & filters.incoming)
 async def start(client, message):
     try:
@@ -87,18 +105,28 @@ async def start(client, message):
         )
         return
     
-    if AUTH_CHANNEL and not await is_subscribed(client, message):
+    # Check force subscribe
+    not_subscribed_channels = await check_force_subscribe(client, message)
+    if not_subscribed_channels:
         try:
-            if REQUEST_TO_JOIN_MODE == True:
-                invite_link = await client.create_chat_invite_link(chat_id=(int(AUTH_CHANNEL)), creates_join_request=True)
-            else:
-                invite_link = await client.create_chat_invite_link(int(AUTH_CHANNEL))
-        except Exception as e:
-            print(e)
-            await message.reply_text("Make sure Bot is admin in Forcesub channel")
-            return
-        try:
-            btn = [[InlineKeyboardButton("ʙᴀᴄᴋᴜᴘ ᴄʜᴀɴɴᴇʟ", url=invite_link.invite_link)]]
+            btn = []
+            for channel_id in not_subscribed_channels:
+                try:
+                    if REQUEST_TO_JOIN_MODE == True:
+                        invite_link = await client.create_chat_invite_link(chat_id=int(channel_id), creates_join_request=True)
+                    else:
+                        invite_link = await client.create_chat_invite_link(int(channel_id))
+
+                    chat = await client.get_chat(int(channel_id))
+                    chat_title = chat.title if hasattr(chat, 'title') else f"Channel {channel_id}"
+                    btn.append([InlineKeyboardButton(f"ᴊᴏɪɴ {chat_title}", url=invite_link.invite_link)])
+                except Exception as e:
+                    print(f"Error creating invite link for {channel_id}: {e}")
+                    continue
+
+            if not btn:
+                return await message.reply_text("Error: Unable to create invite links. Make sure bot is admin in force subscribe channels.")
+
             if message.command[1] != "subscribe":
                 if REQUEST_TO_JOIN_MODE == True:
                     if TRY_AGAIN_BTN == True:
@@ -113,14 +141,16 @@ async def start(client, message):
                         btn.append([InlineKeyboardButton("↻ ᴛʀʏ ᴀɢᴀɪɴ", callback_data=f"checksub#{kk}#{file_id}")])
                     except (IndexError, ValueError):
                         btn.append([InlineKeyboardButton("↻ ᴛʀʏ ᴀɢᴀɪɴ", url=f"https://t.me/{temp.U_NAME}?start={message.command[1]}")])
+
             if REQUEST_TO_JOIN_MODE == True:
                 if TRY_AGAIN_BTN == True:
-                    text = "**🕵️ ʏᴏᴜ ᴅᴏ ɴᴏᴛ ᴊᴏɪɴ ᴍʏ ʙᴀᴄᴋᴜᴘ ᴄʜᴀɴɴᴇʟ ғɪʀsᴛ ᴊᴏɪɴ ᴄʜᴀɴɴᴇʟ ᴛʜᴇɴ ᴛʀʏ ᴀɢᴀɪɴ**"
+                    text = "**🕵️ ʏᴏᴜ ᴍᴜsᴛ ᴊᴏɪɴ ᴀʟʟ ᴄʜᴀɴɴᴇʟs ʙᴇғᴏʀᴇ ᴜsɪɴɢ ᴛʜɪs ʙᴏᴛ**"
                 else:
                     await db.set_msg_command(message.from_user.id, com=message.command[1])
-                    text = "**🕵️ ʏᴏᴜ ᴅᴏ ɴᴏᴛ ᴊᴏɪɴ ᴍʏ ʙᴀᴄᴋᴜᴘ ᴄʜᴀɴɴᴇʟ ғɪʀsᴛ ᴊᴏɪɴ ᴄʜᴀɴɴᴇʟ**"
+                    text = "**🕵️ ʏᴏᴜ ᴍᴜsᴛ ᴊᴏɪɴ ᴀʟʟ ᴄʜᴀɴɴᴇʟs ʙᴇғᴏʀᴇ ᴜsɪɴɢ ᴛʜɪs ʙᴏᴛ**"
             else:
-                text = "**🕵️ ʏᴏᴜ ᴅᴏ ɴᴏᴛ ᴊᴏɪɴ ᴍʏ ʙᴀᴄᴋᴜᴘ ᴄʜᴀɴɴᴇʟ ғɪʀsᴛ ᴊᴏɪɴ ᴄʜᴀɴɴᴇʟ ᴛʜᴇɴ ᴛʀʏ ᴀɢᴀɪɴ**"
+                text = "**🕵️ ʏᴏᴜ ᴍᴜsᴛ ᴊᴏɪɴ ᴀʟʟ ᴄʜᴀɴɴᴇʟs ʙᴇғᴏʀᴇ ᴜsɪɴɢ ᴛʜɪs ʙᴏᴛ. ᴄʟɪᴄᴋ ᴛʀʏ ᴀɢᴀɪɴ ᴀғᴛᴇʀ ᴊᴏɪɴɪɴɢ**"
+
             await client.send_message(
                 chat_id=message.from_user.id,
                 text=text,
@@ -130,7 +160,7 @@ async def start(client, message):
             return
         except Exception as e:
             print(e)
-            return await message.reply_text("something wrong with force subscribe.")
+            return await message.reply_text("Something wrong with force subscribe.")
             
     if len(message.command) == 2 and message.command[1] in ["subscribe", "error", "okay", "help"]:
         if PREMIUM_AND_REFERAL_MODE == True:
@@ -169,6 +199,7 @@ async def start(client, message):
             parse_mode=enums.ParseMode.HTML
         )
         return
+    
     data = message.command[1]
     if data.split("-", 1)[0] == "VJ":
         user_id = int(data.split("-", 1)[1])
@@ -432,7 +463,7 @@ async def start(client, message):
     elif data.startswith("all"):
         files = temp.GETALL.get(file_id)
         if not files:
-            return await message.reply('<b><i>No such file exist.</b></i>')
+            return await message.reply('<b><i>No such file exist.</i></b>')
         filesarr = []
         for file in files:
             file_id = file["file_id"]
@@ -1070,7 +1101,7 @@ async def shortlink(bot, message):
         return await message.reply(f"You are anonymous admin. Turn off anonymous admin and try again this command")
     chat_type = message.chat.type
     if chat_type == enums.ChatType.PRIVATE:
-        return await message.reply_text(f"<b>Hey {message.from_user.mention}, This command only works on groups !\n\n<u>Follow These Steps to Connect Shortener:</u>\n\n1. Add Me in Your Group with Full Admin Rights\n\n2. After Adding in Grp, Set your Shortener\n\nSend this command in your group\n\n—> /shortlink ""{your_shortener_website_name} {your_shortener_api}\n\n#Sample:-\n/shortlink kpslink.in CAACAgUAAxkBAAEJ4GtkyPgEzpIUC_DSmirN6eFWp4KInAACsQoAAoHSSFYub2D15dGHfy8E\n\nThat's it!!! Enjoy Earning Money 💲\n\n[[[ Trusted Earning Site - https://kpslink.in]]]\n\nIf you have any Doubts, Feel Free to Ask me - @kingvj01\n\n(Puriyala na intha contact la message pannunga - @kngvj01)</b>")
+        return await message.reply_text(f"<b>Hey {message.from_user.mention}, This command only works in groups!\n\nTry this command in your own group, if you are using me in your group</b>")
     elif chat_type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
         grpid = message.chat.id
         title = message.chat.title
@@ -1254,8 +1285,13 @@ async def nofsub(client, message):
         return
     else:
         pass
+
+    settings = await get_settings(grpid)
+    current_fsub = settings.get('fsub', [])
+    channel_count = len(current_fsub) if current_fsub else 0
+
     await save_group_settings(grpid, 'fsub', None)
-    await message.reply_text(f"<b>Successfully removed force subscribe from {title}.</b>")
+    await message.reply_text(f"<b>✅ Successfully removed all {channel_count} force subscribe channels from {title}.\n\nUsers can now use the bot without joining any channels.</b>")
 
 @Client.on_message(filters.command('fsub'))
 async def fsub(client, message):
@@ -1280,20 +1316,40 @@ async def fsub(client, message):
         ids = message.text.split(" ", 1)[1]
         fsub_ids = [int(id) for id in ids.split()]
     except IndexError:
-        return await message.reply_text("<b>Command Incomplete!\n\nAdd Multiple Channel By Seperate Space. Like: /fsub id1 id2 id3</b>")
+        return await message.reply_text("<b>Command Incomplete!\n\nAdd Multiple Channel By Seperate Space. Like: /fsub id1 id2 id3\n\nYou can add unlimited channels!</b>")
     except ValueError:
         return await message.reply_text('<b>Make Sure Ids are Integer.</b>')        
+
+    # Validate all channels first
     channels = "Channels:\n"
+    valid_channels = []
     for id in fsub_ids:
         try:
             chat = await client.get_chat(id)
+            # Check if bot is admin in the channel
+            bot_member = await client.get_chat_member(id, client.me.id)
+            if bot_member.status not in [enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER]:
+                return await message.reply_text(f"<b>I'm not admin in {chat.title if hasattr(chat, 'title') else id}!\nPlease make me admin in that channel first.</b>")
         except Exception as e:
-            return await message.reply_text(f"<b>{id} is invalid!\nMake sure this bot admin in that channel.\n\nError - {e}</b>")
-        if chat.type != enums.ChatType.CHANNEL:
-            return await message.reply_text(f"<b>{id} is not channel.</b>")
-        channels += f'{chat.title}\n'
-    await save_group_settings(grpid, 'fsub', fsub_ids)
-    await message.reply_text(f"<b>Successfully set force channels for {title} to\n\n{channels}\n\nYou can remove it by /nofsub.</b>")
+            return await message.reply_text(f"<b>{id} is invalid or I don't have access!\nMake sure this bot is admin in that channel.\n\nError - {e}</b>")
+
+        if chat.type not in [enums.ChatType.CHANNEL, enums.ChatType.SUPERGROUP]:
+            return await message.reply_text(f"<b>{id} is not a channel or supergroup.</b>")
+
+        valid_channels.append(id)
+        channels += f'• {chat.title if hasattr(chat, "title") else f"Channel {id}"}\n'
+
+    # Get existing fsub channels and add new ones
+    settings = await get_settings(grpid)
+    existing_fsub = settings.get('fsub', [])
+
+    # Combine existing and new channels (avoid duplicates)
+    all_channels = list(set(existing_fsub + valid_channels))
+
+    await save_group_settings(grpid, 'fsub', all_channels)
+
+    total_channels = len(all_channels)
+    await message.reply_text(f"<b>✅ Successfully set {total_channels} force subscribe channels for {title}\n\n{channels}\n💡 Users must join all these channels to use the bot.\n\nYou can:\n• Add more channels: /fsub channel_id1 channel_id2\n• View current channels: /listfsub\n• Remove all: /nofsub</b>")
         
 
 @Client.on_message(filters.command("add_premium"))

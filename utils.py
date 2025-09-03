@@ -82,16 +82,35 @@ async def is_subscribed(bot, query):
             logger.exception(e)
             return False
     else:
-        try:
-            user = await bot.get_chat_member(AUTH_CHANNEL, query.from_user.id)
-        except UserNotParticipant:
-            pass
-        except Exception as e:
-            logger.exception(e)
-        else:
-            if user.status != enums.ChatMemberStatus.BANNED:
-                return True
-        return False
+        # Check AUTH_CHANNEL if set
+        if AUTH_CHANNEL:
+            try:
+                user = await bot.get_chat_member(AUTH_CHANNEL, query.from_user.id)
+                if user.status == enums.ChatMemberStatus.BANNED:
+                    return False
+            except UserNotParticipant:
+                return False
+            except Exception as e:
+                logger.exception(e)
+                return False
+
+    # Check group-specific force subscribe channels
+    if hasattr(query, 'message') and query.message.chat.type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
+        settings = await get_settings(query.message.chat.id)
+        fsub_channels = settings.get('fsub')
+        if fsub_channels:
+            for channel_id in fsub_channels:
+                try:
+                    user = await bot.get_chat_member(channel_id, query.from_user.id)
+                    if user.status == enums.ChatMemberStatus.BANNED:
+                        return False
+                except UserNotParticipant:
+                    return False
+                except Exception as e:
+                    logger.exception(e)
+                    return False
+
+    return True
 
 async def get_poster(query, bulk=False, id=False, file=None):
     if not id:
@@ -119,8 +138,6 @@ async def get_poster(query, bulk=False, id=False, file=None):
         movieid=list(filter(lambda k: k.get('kind') in ['movie', 'tv series'], filtered))
         if not movieid:
             movieid = filtered
-        if bulk:
-            return movieid
         movieid = movieid[0].movieID
     else:
         movieid = query
