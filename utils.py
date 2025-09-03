@@ -76,7 +76,8 @@ async def is_subscribed(bot, query):
                 logger.exception(e)
                 return False
     
-    if REQUEST_TO_JOIN_MODE == True and join_db().isActive():
+    # Check AUTH_CHANNEL only if REQUEST_TO_JOIN_MODE is enabled and AUTH_CHANNEL is set
+    if REQUEST_TO_JOIN_MODE == True and AUTH_CHANNEL and join_db().isActive():
         try:
             user = await join_db().get_user(query.from_user.id)
             if user and user["user_id"] == query.from_user.id:
@@ -85,27 +86,27 @@ async def is_subscribed(bot, query):
                 try:
                     user_data = await bot.get_chat_member(AUTH_CHANNEL, query.from_user.id)
                 except UserNotParticipant:
-                    pass
+                    return False
                 except Exception as e:
                     logger.exception(e)
+                    return False
                 else:
-                    if user_data.status != enums.ChatMemberStatus.BANNED:
-                        return True
+                    if user_data.status == enums.ChatMemberStatus.BANNED:
+                        return False
         except Exception as e:
             logger.exception(e)
             return False
-    else:
-        # Check AUTH_CHANNEL if set
-        if AUTH_CHANNEL:
-            try:
-                user = await bot.get_chat_member(AUTH_CHANNEL, query.from_user.id)
-                if user.status == enums.ChatMemberStatus.BANNED:
-                    return False
-            except UserNotParticipant:
+    elif AUTH_CHANNEL and not REQUEST_TO_JOIN_MODE:
+        # Check AUTH_CHANNEL if set and not in request to join mode
+        try:
+            user = await bot.get_chat_member(AUTH_CHANNEL, query.from_user.id)
+            if user.status == enums.ChatMemberStatus.BANNED:
                 return False
-            except Exception as e:
-                logger.exception(e)
-                return False
+        except UserNotParticipant:
+            return False
+        except Exception as e:
+            logger.exception(e)
+            return False
 
     # Check group-specific force subscribe channels
     if hasattr(query, 'message') and query.message.chat.type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
