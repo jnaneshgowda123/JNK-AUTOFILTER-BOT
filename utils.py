@@ -63,6 +63,19 @@ async def pub_is_subscribed(bot, query, channel):
     return btn
 
 async def is_subscribed(bot, query):
+    # Check global CHANNELS force subscribe
+    if CHANNELS:
+        for channel_id in CHANNELS:
+            try:
+                user = await bot.get_chat_member(channel_id, query.from_user.id)
+                if user.status in [enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.BANNED]:
+                    return False
+            except UserNotParticipant:
+                return False
+            except Exception as e:
+                logger.exception(e)
+                return False
+    
     if REQUEST_TO_JOIN_MODE == True and join_db().isActive():
         try:
             user = await join_db().get_user(query.from_user.id)

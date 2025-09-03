@@ -1341,7 +1341,7 @@ async def fsub(client, message):
 
     # Get existing fsub channels and add new ones
     settings = await get_settings(grpid)
-    existing_fsub = settings.get('fsub', [])
+    existing_fsub = settings.get('fsub') or []
 
     # Combine existing and new channels (avoid duplicates)
     all_channels = list(set(existing_fsub + valid_channels))
