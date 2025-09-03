@@ -8,7 +8,7 @@ from pyrogram import Client, filters, enums
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery, InputMediaPhoto, WebAppInfo, ChatPermissions
 from pyrogram.errors import MessageNotModified, UserIsBlocked, PeerIdInvalid, MediaEmpty, PhotoInvalidDimensions, WebpageMediaEmpty
 from Script import script
-from info import ADMINS, CLONE_MODE, AUTH_CHANNEL, REQST_CHANNEL, AUTH_USERS, CUSTOM_FILE_CAPTION, AUTH_GROUPS, P_TTI_SHOW_OFF, IMDB, SINGLE_BUTTON, SPELL_CHECK_REPLY, IMDB_TEMPLATE, LOG_CHANNEL, FILE_STORE_CHANNEL, MAX_BTN, UN_CHANNEL, SUPPORT_CHAT_ID, PICS, NO_RESULTS_MSG, GRP_LNK, CHNL_LNK, MSG_ALRT, OWNER_LNK, REFERAL_PREMEIUM_TIME, REFERAL_COUNT, PAYMENT_TEXT, PAYMENT_QR, PREMIUM_AND_REFERAL_MODE, LANGUAGES, SEASONS, EPISODES, QUALITIES, YEARS, URL
+from info import ADMINS, CLONE_MODE, AUTH_CHANNEL, REQST_CHANNEL, AUTH_USERS, CUSTOM_FILE_CAPTION, AUTH_GROUPS, P_TTI_SHOW_OFF, IMDB, SINGLE_BUTTON, SPELL_CHECK_REPLY, LOG_CHANNEL, FILE_STORE_CHANNEL, MAX_BTN, UN_CHANNEL, SUPPORT_CHAT_ID, PICS, NO_RESULTS_MSG, GRP_LNK, CHNL_LNK, MSG_ALRT, OWNER_LNK, REFERAL_PREMEIUM_TIME, REFERAL_COUNT, PAYMENT_TEXT, PAYMENT_QR, PREMIUM_AND_REFERAL_MODE, LANGUAGES, SEASONS, EPISODES, QUALITIES, YEARS, URL
 from utils import get_poster, temp, get_settings, save_group_settings, is_subscribed, pub_is_subscribed, send_all, get_size, get_cap
 from database.users_chats_db import db
 from database.ia_filterdb import col, sec_col, db as vjdb, sec_db, get_file_details, get_search_results, get_bad_files
