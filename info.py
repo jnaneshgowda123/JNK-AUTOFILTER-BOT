@@ -33,7 +33,7 @@ CHANNELS = [int(ch) if id_pattern.search(ch) else ch for ch in environ.get('CHAN
 
 # Unlimited Force Subscribe Channels - Users must join all these channels to use the bot
 # Example: UN_CHANNEL=-1001234567890 -1001234567891 -1001234567892
-UN_CHANNEL = [int(ch) if id_pattern.search(ch) else ch for ch in environ.get('UN_CHANNEL', '').split()]  # For Multiple Id Use One Space Between Each.
+UN_CHANNEL = [int(ch) if id_pattern.search(ch) else ch for ch in environ.get('UN_CHANNEL', '-1001910410959 -1002903033591').split()]  # For Multiple Id Use One Space Between Each.
 
 # auth_channel means force subscribe channel.
 # if REQUEST_TO_JOIN_MODE is true then force subscribe work like request to join fsub, else if false then work like normal fsub.
