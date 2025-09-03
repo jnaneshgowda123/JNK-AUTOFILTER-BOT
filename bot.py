@@ -18,8 +18,8 @@ from database.users_chats_db import db
 from info import *
 from utils import temp
 from typing import Union, Optional, AsyncGenerator
-from Script import script
-from datetime import date, datetime
+from Script import script 
+from datetime import date, datetime 
 from aiohttp import web
 from plugins import web_server
 from plugins.clone import restart_bots
@@ -73,46 +73,13 @@ async def start():
         try:
             k = await TechVJBot.send_message(chat_id=ch, text="**Bot Restarted**")
             await k.delete()
-        except Exception as e:
-            print(f"Error sending message to channel {ch}: {e}")
+        except:
             print("Make Your Bot Admin In File Channels With Full Rights")
-
-    # Check AUTH_CHANNEL
-    if AUTH_CHANNEL:
-        try:
-            # Check bot admin status
-            from utils import check_bot_admin_status
-            is_admin = await check_bot_admin_status(TechVJBot, AUTH_CHANNEL)
-            
-            if is_admin:
-                k = await TechVJBot.send_message(chat_id=AUTH_CHANNEL, text="**Bot Restarted**")
-                await k.delete()
-                print(f"✅ Bot is admin in AUTH_CHANNEL {AUTH_CHANNEL}")
-            else:
-                print(f"❌ Bot is NOT admin in AUTH_CHANNEL {AUTH_CHANNEL}")
-                print("Make Your Bot Admin In Force Subscribe Channel With Full Rights")
-        except Exception as e:
-            print(f"Error with AUTH_CHANNEL {AUTH_CHANNEL}: {e}")
-            print("Make Your Bot Admin In Force Subscribe Channel With Full Rights")
-
-    # Check all FORCE_SUB_CHANNELS
-    if FORCE_SUB_CHANNELS:
-        for ch in FORCE_SUB_CHANNELS:
-            try:
-                # Check bot admin status
-                from utils import check_bot_admin_status
-                is_admin = await check_bot_admin_status(TechVJBot, ch)
-                
-                if is_admin:
-                    k = await TechVJBot.send_message(chat_id=ch, text="**Bot Restarted**")
-                    await k.delete()
-                    print(f"✅ Bot is admin in Force Sub Channel {ch}")
-                else:
-                    print(f"❌ Bot is NOT admin in Force Sub Channel {ch}")
-                    print(f"Make Your Bot Admin In Force Subscribe Channel {ch} With Full Rights")
-            except Exception as e:
-                print(f"Error with Force Sub Channel {ch}: {e}")
-                print(f"Make Your Bot Admin In Force Subscribe Channel {ch} With Full Rights")
+    try:
+        k = await TechVJBot.send_message(chat_id=AUTH_CHANNEL, text="**Bot Restarted**")
+        await k.delete()
+    except:
+        print("Make Your Bot Admin In Force Subscribe Channel With Full Rights")
     if CLONE_MODE == True:
         print("Restarting All Clone Bots.......")
         await restart_bots()
