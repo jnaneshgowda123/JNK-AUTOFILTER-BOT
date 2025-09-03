@@ -1,0 +1,80 @@
+Instance created. Preparing to start...
+Instance is starting... Waiting for health checks to pass.
+Traceback (most recent call last):
+  File "/VJ-FILTER-BOT/bot.py", line 33, in <module>
+    TechVJBot.start()
+  File "/usr/local/lib/python3.10/site-packages/pyrogram/sync.py", line 67, in async_to_sync_wrap
+    return loop.run_until_complete(coroutine)
+  File "/usr/local/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
+    return future.result()
+  File "/usr/local/lib/python3.10/site-packages/pyrogram/methods/utilities/start.py", line 75, in start
+    await self.initialize()
+  File "/usr/local/lib/python3.10/site-packages/pyrogram/methods/auth/initialize.py", line 47, in initialize
+    self.load_plugins()
+  File "/usr/local/lib/python3.10/site-packages/pyrogram/client.py", line 874, in load_plugins
+    module = import_module(module_path)
+  File "/usr/local/lib/python3.10/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/VJ-FILTER-BOT/plugins/pm_filter.py", line 11, in <module>
+    from info import ADMINS, CLONE_MODE, AUTH_CHANNEL, REQST_CHANNEL, AUTH_USERS, CUSTOM_FILE_CAPTION, AUTH_GROUPS, P_TTI_SHOW_OFF, IMDB, SINGLE_BUTTON, SPELL_CHECK_REPLY, IMDB_TEMPLATE, LOG_CHANNEL, FILE_STORE_CHANNEL, MAX_BTN, UN_CHANNEL, SUPPORT_CHAT_ID, PICS, NO_RESULTS_MSG, GRP_LNK, CHNL_LNK, MSG_ALRT, OWNER_LNK, REFERAL_PREMEIUM_TIME, REFERAL_COUNT, PAYMENT_TEXT, PAYMENT_QR, PREMIUM_AND_REFERAL_MODE, LANGUAGES, SEASONS, EPISODES, QUALITIES, YEARS, URL
+ImportError: cannot import name 'AUTH_GROUPS' from 'info' (/VJ-FILTER-BOT/info.py)
+Application exited with code 1. This usually indicates an application failure. Check that the command used to launch your application is correct.
+Traceback (most recent call last):
+  File "/VJ-FILTER-BOT/bot.py", line 33, in <module>
+    TechVJBot.start()
+  File "/usr/local/lib/python3.10/site-packages/pyrogram/sync.py", line 67, in async_to_sync_wrap
+    return loop.run_until_complete(coroutine)
+  File "/usr/local/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
+    return future.result()
+  File "/usr/local/lib/python3.10/site-packages/pyrogram/methods/utilities/start.py", line 75, in start
+    await self.initialize()
+  File "/usr/local/lib/python3.10/site-packages/pyrogram/methods/auth/initialize.py", line 47, in initialize
+    self.load_plugins()
+  File "/usr/local/lib/python3.10/site-packages/pyrogram/client.py", line 874, in load_plugins
+    module = import_module(module_path)
+  File "/usr/local/lib/python3.10/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/VJ-FILTER-BOT/plugins/pm_filter.py", line 11, in <module>
+    from info import ADMINS, CLONE_MODE, AUTH_CHANNEL, REQST_CHANNEL, AUTH_USERS, CUSTOM_FILE_CAPTION, AUTH_GROUPS, P_TTI_SHOW_OFF, IMDB, SINGLE_BUTTON, SPELL_CHECK_REPLY, IMDB_TEMPLATE, LOG_CHANNEL, FILE_STORE_CHANNEL, MAX_BTN, UN_CHANNEL, SUPPORT_CHAT_ID, PICS, NO_RESULTS_MSG, GRP_LNK, CHNL_LNK, MSG_ALRT, OWNER_LNK, REFERAL_PREMEIUM_TIME, REFERAL_COUNT, PAYMENT_TEXT, PAYMENT_QR, PREMIUM_AND_REFERAL_MODE, LANGUAGES, SEASONS, EPISODES, QUALITIES, YEARS, URL
+ImportError: cannot import name 'AUTH_GROUPS' from 'info' (/VJ-FILTER-BOT/info.py)
+Application exited with code 1. This usually indicates an application failure. Check that the command used to launch your application is correct.
+Instance stopped.
+Instance created. Preparing to start...
+Instance is starting... Waiting for health checks to pass.
+Traceback (most recent call last):
+  File "/VJ-FILTER-BOT/bot.py", line 33, in <module>
+    TechVJBot.start()
+  File "/usr/local/lib/python3.10/site-packages/pyrogram/sync.py", line 67, in async_to_sync_wrap
+    return loop.run_until_complete(coroutine)
+  File "/usr/local/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
+    return future.result()
+  File "/usr/local/lib/python3.10/site-packages/pyrogram/methods/utilities/start.py", line 75, in start
+    await self.initialize()
+  File "/usr/local/lib/python3.10/site-packages/pyrogram/methods/auth/initialize.py", line 47, in initialize
+    self.load_plugins()
+  File "/usr/local/lib/python3.10/site-packages/pyrogram/client.py", line 874, in load_plugins
+    module = import_module(module_path)
+  File "/usr/local/lib/python3.10/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/VJ-FILTER-BOT/plugins/pm_filter.py", line 11, in <module>
+    from info import ADMINS, CLONE_MODE, AUTH_CHANNEL, REQST_CHANNEL, AUTH_USERS, CUSTOM_FILE_CAPTION, AUTH_GROUPS, P_TTI_SHOW_OFF, IMDB, SINGLE_BUTTON, SPELL_CHECK_REPLY, IMDB_TEMPLATE, LOG_CHANNEL, FILE_STORE_CHANNEL, MAX_BTN, UN_CHANNEL, SUPPORT_CHAT_ID, PICS, NO_RESULTS_MSG, GRP_LNK, CHNL_LNK, MSG_ALRT, OWNER_LNK, REFERAL_PREMEIUM_TIME, REFERAL_COUNT, PAYMENT_TEXT, PAYMENT_QR, PREMIUM_AND_REFERAL_MODE, LANGUAGES, SEASONS, EPISODES, QUALITIES, YEARS, URL
+ImportError: cannot import name 'AUTH_GROUPS' from 'info' (/VJ-FILTER-BOT/info.py)
+Application exited with code 1. This usually indicates an application failure. Check that the command used to launch your application is correct.
