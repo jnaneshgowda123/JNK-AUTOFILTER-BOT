@@ -63,9 +63,9 @@ async def pub_is_subscribed(bot, query, channel):
     return btn
 
 async def is_subscribed(bot, query):
-    # Check global CHANNELS force subscribe
-    if CHANNELS:
-        for channel_id in CHANNELS:
+    # Check global UN_CHANNEL force subscribe
+    if UN_CHANNEL:
+        for channel_id in UN_CHANNEL:
             try:
                 user = await bot.get_chat_member(channel_id, query.from_user.id)
                 if user.status in [enums.ChatMemberStatus.LEFT, enums.ChatMemberStatus.BANNED]:

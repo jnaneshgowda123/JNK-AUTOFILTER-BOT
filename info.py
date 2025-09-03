@@ -29,8 +29,11 @@ AUTH_USERS = (auth_users + ADMINS) if auth_users else []
 LOG_CHANNEL = int(environ.get('LOG_CHANNEL', ''))
 
 # This Is File Channel Where You Upload Your File Then Bot Automatically Save It In Database 
-# Also used as global force subscribe channels - users must join all these channels to use the bot
 CHANNELS = [int(ch) if id_pattern.search(ch) else ch for ch in environ.get('CHANNELS', '').split()]  # For Multiple Id Use One Space Between Each.
+
+# Unlimited Force Subscribe Channels - Users must join all these channels to use the bot
+# Example: UN_CHANNEL=-1001234567890 -1001234567891 -1001234567892
+UN_CHANNEL = [int(ch) if id_pattern.search(ch) else ch for ch in environ.get('UN_CHANNEL', '').split()]  # For Multiple Id Use One Space Between Each.
 
 # auth_channel means force subscribe channel.
 # if REQUEST_TO_JOIN_MODE is true then force subscribe work like request to join fsub, else if false then work like normal fsub.
